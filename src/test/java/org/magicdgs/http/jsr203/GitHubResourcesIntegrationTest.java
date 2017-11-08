@@ -7,7 +7,9 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -48,8 +50,15 @@ public class GitHubResourcesIntegrationTest extends BaseTest {
 
     @Test(dataProvider = "getDocsFilesForTesting")
     public void testGithubAndDocsResourcesAreEqual(final String fileName) throws Exception {
-        final byte[] local = Files.readAllBytes(new File(getPathFromLocalDocsFile(fileName)).toPath());
-        final byte[] github = readAllBytes(new URI(getGithubPagesFileUrl(fileName)).toURL());
+        // 1. read the local file
+        final Path localFile = new File(getPathFromLocalDocsFile(fileName)).toPath();
+        final byte[] local = Files.readAllBytes(localFile);
+
+        // 2. read the GitHub-pages file
+        final URL githubUrl = new URI(getGithubPagesFileUrl(fileName)).toURL();
+        final byte[] github = readAllBytes(githubUrl);
+
+        // assert that the same bytes were read
         Assert.assertEquals(github, local);
     }
 }

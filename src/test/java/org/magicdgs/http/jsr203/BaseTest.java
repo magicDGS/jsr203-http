@@ -1,12 +1,9 @@
 package org.magicdgs.http.jsr203;
 
-import com.sun.xml.internal.messaging.saaj.util.ByteOutputStream;
-
-import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.ByteBuffer;
 
 /**
  * Base test class with useful methods.
@@ -76,20 +73,21 @@ public class BaseTest {
                 final byte[] result = new byte[length];
                 final int read = is.read(result);
                 if (read != length) {
-                    throw new RuntimeException("Read " + read + " bytes, but " + length + "expected");
+                    throw new RuntimeException(
+                            "Read " + read + " bytes, but " + length + "expected");
                 }
                 return result;
             }
 
             // otherwise, read with a buffer
             byte[] buffer = new byte[0xFFFF];
-            final ByteOutputStream bso = new ByteOutputStream();
+            final ByteArrayOutputStream bso = new ByteArrayOutputStream();
 
-            for (int len; (len = is.read(buffer)) != -1;) {
+            for (int len; (len = is.read(buffer)) != -1; ) {
                 bso.write(buffer, 0, len);
             }
 
-            return bso.getBytes();
+            return bso.toByteArray();
         } finally {
             connection.disconnect();
         }
