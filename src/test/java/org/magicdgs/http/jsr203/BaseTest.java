@@ -59,7 +59,6 @@ public class BaseTest {
     public static byte[] readAllBytes(final URL httpUrl) throws Exception {
         final HttpURLConnection connection = (HttpURLConnection) httpUrl.openConnection();
         try {
-
             // open the connection and the input stream
             // open the connection and try to guess the length of the output
             connection.connect();
@@ -82,7 +81,6 @@ public class BaseTest {
             // otherwise, read with a buffer
             byte[] buffer = new byte[0xFFFF];
             final ByteArrayOutputStream bso = new ByteArrayOutputStream();
-
             for (int len; (len = is.read(buffer)) != -1; ) {
                 bso.write(buffer, 0, len);
             }

@@ -16,7 +16,6 @@ import java.nio.file.Path;
  */
 public class GitHubResourcesIntegrationTest extends BaseTest {
 
-
     /**
      * Gets files that exists in the docs/ directory and that are already in GitHub-pages.
      *
