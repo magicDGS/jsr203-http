@@ -1,0 +1,117 @@
+// Dependencies for the buildscript
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+}
+
+// PLUGINS
+// add support for Java
+apply plugin: 'java'
+// Apply the custom jacoco coverage plugin
+apply from: 'gradle/jacoco.coverage.gradle'
+
+group = 'org.magicdgs'
+
+// TODO - use semverVersion() with git tags from com.palantir:gradle-gitsemver 
+version "0.0.0"
+description = """HTTP/S FileSystem provider for Java NIO.2"""
+
+// library dependencies
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+    // for logging, we use the SLF4J API
+    compile "org.slf4j:slf4j-api:1.7.25"
+
+    // use TestNG for testing
+    testCompile "org.testng:testng:6.11"
+    testCompile "org.mockito:mockito-core:2.8.47"
+}
+
+// for managing the wrapper task
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.2.1'
+}
+
+tasks.withType(Javadoc) {
+    // the title includes the version of the API
+    title = "jsr203-http $version API"
+
+    // add the links to the Java8 API too
+    options.links("http://docs.oracle.com/javase/8/docs/api/")
+    // add Java8 optional tags
+    options.tags = ["apiNote:a:API Note:",
+                    "implSpec:a:Implementation Requirements:",
+                    "implNote:a:Implementation Note:"]
+
+    // capture the output for the javadoc task to check if there are warnings
+    // from https://stackoverflow.com/questions/29519085/how-to-fail-gradle-build-on-javadoc-warnings
+    def capturedOutput = []
+    def listener = { capturedOutput << it } as StandardOutputListener
+    doFirst {
+        logging.addStandardErrorListener(listener)
+        logging.addStandardOutputListener(listener)
+    }
+    doLast {
+        logging.removeStandardOutputListener(listener)
+        logging.removeStandardErrorListener(listener)
+        // if threre is any warning, fail with a gradle exception
+        capturedOutput.each { e ->
+            if(e.toString() =~ " warning: ") {
+                throw new GradleException("There are javadoc warnings: javadoc failed");
+            }
+        }
+    }
+}
+
+// test task
+tasks.withType(Test) {
+
+    // tests could be always re-run
+    outputs.upToDateWhen { false }
+
+    useTestNG()
+
+    // do not show the stdout/stderr of the test JVM(s) on the console
+    testLogging.showStandardStreams = false
+
+    // set heap size for the test JVM(s)
+    minHeapSize = "1G"
+    maxHeapSize = "2G"
+
+    // log the test that is running
+    beforeTest { descriptor ->
+        logger.lifecycle("Running Test: " + descriptor)
+    }
+
+    // logging after the tests
+    testLogging {
+        testLogging {
+            events "skipped", "failed"
+            exceptionFormat = "full"
+        }
+        afterSuite { desc, result ->
+            if (!desc.parent) { // will match the outermost suite
+                println "Results: ${result.resultType} (${result.testCount} tests, ${result.successfulTestCount} successes, ${result.failedTestCount} failures, ${result.skippedTestCount} skipped)"
+            }
+        }
+    }
+}
+
+// for jar tasks
+tasks.withType(Jar) {
+    // add license
+    from(rootProject.projectDir) {
+        include "LICENSE.txt"
+        into "META-INF"
+    }
+    // add manifest information
+    manifest {
+        attributes 'Implementation-Title': rootProject.name,
+                   'Implementation-Version': version
+    }
+}
