@@ -1,0 +1,4 @@
+# FILE 2
+This is a test file that should be used for testing purposes.
+
+Location: directory/file2.txt
