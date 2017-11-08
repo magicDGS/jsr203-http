@@ -1,0 +1,31 @@
+language: java
+git:
+  depth: 9999999
+jdk:
+  - oraclejdk8
+env:
+  # disable gradle daemon
+  global:
+    - GRADLE_OPTS="-Dorg.gradle.daemon=false"
+  matrix:
+    # javadoc compliance testing
+    - TYPE=javadoc
+    # library testing
+    - TYPE=test
+
+install:
+  - ./gradlew assemble
+
+script:
+  - if [[ $TYPE == javadoc ]]; then
+      ./gradlew javadoc;
+    elif [[ $TYPE == test ]]; then
+      ./gradlew jacocoTestReport;
+    else
+      echo "Test type not recognized $TYPE";
+      exit 1;
+    fi
+
+after_success:
+  # only upload to codecov for the tests
+  - if [[ $TYPE == test ]]; then bash <(curl -s https://codecov.io/bash) -X gcov -X coveragepy; fi

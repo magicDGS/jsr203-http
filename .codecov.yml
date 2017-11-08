@@ -1,0 +1,22 @@
+codecov:
+  branch: master
+
+coverage:
+  precision: 3
+  round: nearest
+  # TODO - change to 50..100 once in v0.1.0
+  range: "0...100"
+
+  status:
+    project:
+      default:
+        # TODO - set to concrete threshold once in v0.1.0
+        threshold: null
+    patch:
+      default:
+         # TODO: set to concrete threshold once in v0.1.0
+        threshold: null
+
+comment:
+  layout: "reach, diff, flags, files"
+behavior: new
