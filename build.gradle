@@ -2,19 +2,27 @@
 buildscript {
     repositories {
         mavenCentral()
+        // gitsemver plugin repository
+        maven {
+            url "http://dl.bintray.com/palantir/releases"
+        }
+    }
+    // gitsemver plugin dependency
+    dependencies {
+        classpath 'com.palantir:gradle-gitsemver:0.7.2'
     }
 }
 
 // PLUGINS
 // add support for Java
 apply plugin: 'java'
+// semantic versioning
+apply plugin: 'gitsemver'
 // Apply the custom jacoco coverage plugin
 apply from: 'gradle/jacoco.coverage.gradle'
 
 group = 'org.magicdgs'
-
-// TODO - use semverVersion() with git tags from com.palantir:gradle-gitsemver 
-version "0.0.0"
+version semverVersion()
 description = """HTTP/S FileSystem provider for Java NIO.2"""
 
 // library dependencies
