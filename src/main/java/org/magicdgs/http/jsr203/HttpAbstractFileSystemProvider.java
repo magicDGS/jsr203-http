@@ -66,7 +66,7 @@ abstract class HttpAbstractFileSystemProvider extends FileSystemProvider {
 
     /** Unsupported method. */
     @Override
-    public void createDirectory(final Path dir, final FileAttribute<?>... attrs)
+    public final void createDirectory(final Path dir, final FileAttribute<?>... attrs)
             throws IOException {
         throw new UnsupportedOperationException(this.getClass().getName() +
                 " is read-only: cannot create directory");
@@ -74,7 +74,7 @@ abstract class HttpAbstractFileSystemProvider extends FileSystemProvider {
 
     /** Unsupported method. */
     @Override
-    public void delete(final Path path) throws IOException {
+    public final void delete(final Path path) throws IOException {
         throw new UnsupportedOperationException(this.getClass().getName() +
                 " is read-only: cannot delete directory");
     }
@@ -87,7 +87,7 @@ abstract class HttpAbstractFileSystemProvider extends FileSystemProvider {
 
     /** Unsupported method. */
     @Override
-    public void move(final Path source, final Path target, final CopyOption... options)
+    public final void move(final Path source, final Path target, final CopyOption... options)
             throws IOException {
         throw new UnsupportedOperationException(this.getClass().getName() +
                 " is read-only: cannot move paths");
@@ -132,7 +132,7 @@ abstract class HttpAbstractFileSystemProvider extends FileSystemProvider {
     }
 
     @Override
-    public void setAttribute(final Path path, final String attribute, final Object value,
+    public final void setAttribute(final Path path, final String attribute, final Object value,
             final LinkOption... options) throws IOException {
         throw new UnsupportedOperationException(this.getClass().getName() +
                 " is read-only: cannot set attributes to paths");
