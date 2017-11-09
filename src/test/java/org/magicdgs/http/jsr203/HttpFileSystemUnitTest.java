@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class HttpFileSystemUnitTest {
+public class HttpFileSystemUnitTest extends BaseTest {
 
     @Test
     public void testIsReadOnly() throws Exception {

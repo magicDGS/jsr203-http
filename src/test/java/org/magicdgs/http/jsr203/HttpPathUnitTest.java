@@ -5,7 +5,7 @@ import org.testng.annotations.Test;
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class HttpPathUnitTest {
+public class HttpPathUnitTest extends BaseTest {
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testToFile() throws Exception {

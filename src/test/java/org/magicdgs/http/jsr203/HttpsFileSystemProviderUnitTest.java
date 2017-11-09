@@ -6,7 +6,7 @@ import org.testng.annotations.Test;
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
-public class HttpsFileSystemProviderUnitTest {
+public class HttpsFileSystemProviderUnitTest extends BaseTest {
 
     @Test
     public void testGetScheme() throws Exception {

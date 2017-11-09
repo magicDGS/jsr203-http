@@ -18,22 +18,22 @@ public class HttpAbstractFileSystemProviderUnitTest extends BaseTest {
             };
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
-    void testCreateDirectoryIsUnsupported() throws Exception {
+    public void testCreateDirectoryIsUnsupported() throws Exception {
         TEST_PROVIDER.createDirectory(null);
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
-    void testDeleteIsUnsupported() throws Exception {
+    public void testDeleteIsUnsupported() throws Exception {
         TEST_PROVIDER.delete(null);
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
-    void testMoveIsUnsupported() throws Exception {
+    public void testMoveIsUnsupported() throws Exception {
         TEST_PROVIDER.move(null, null);
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
-    void testSetAttributeIsUnsupported() throws Exception {
+    public void testSetAttributeIsUnsupported() throws Exception {
         TEST_PROVIDER.setAttribute(null, null, null);
     }
 
