@@ -11,5 +11,4 @@ public class HttpPathUnitTest extends BaseTest {
     public void testToFile() throws Exception {
         new HttpPath().toFile();
     }
-
 }

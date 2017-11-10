@@ -12,5 +12,4 @@ public class HttpFileSystemProviderUnitTest extends BaseTest {
     public void testGetScheme() throws Exception {
         Assert.assertEquals(new HttpFileSystemProvider().getScheme(), "http");
     }
-
 }
