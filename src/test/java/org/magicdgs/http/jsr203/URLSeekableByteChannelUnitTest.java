@@ -137,9 +137,6 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
                     // first position and then come back to 0
                     actual.position(position).position(0),
                     expected);
-
-            // assert that the size is the same after seek
-            Assert.assertEquals(actual.size(), expected.size());
         }
     }
 
@@ -152,9 +149,6 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
                     // seek twice to the same position is equal to seek only once
                     actual.position(position).position(position),
                     expected.position(position));
-
-            // assert that the size is the same after seek
-            Assert.assertEquals(actual.size(), expected.size());
         }
     }
 
@@ -167,8 +161,6 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
                     // seek first to 10 bytes more, and then to the requested position
                     actual.position(position + 10).position(position),
                     expected.position(position));
-
-
         }
     }
 
