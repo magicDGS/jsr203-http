@@ -1,0 +1,2 @@
+org.magicdgs.http.jsr203.HttpFileSystemProvider
+org.magicdgs.http.jsr203.HttpsFileSystemProvider
