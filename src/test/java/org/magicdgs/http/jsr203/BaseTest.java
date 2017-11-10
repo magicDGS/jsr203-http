@@ -1,9 +1,12 @@
 package org.magicdgs.http.jsr203;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Path;
 
 /**
  * Base test class with useful methods.
@@ -19,33 +22,64 @@ public class BaseTest {
     private static final String DOCS_BASE_PATH = "docs/";
 
     /**
-     * Gets the URL for a file in the project GitHub-pages.
+     * Gets the full URL name for a file in the project's GitHub-pages.
      *
-     * <p>Calling this method with the same file name as in {@link #getPathFromLocalDocsFile(String)}
+     * <p>Calling this method with the same file name as in {@link #getLocalDocsFullPathName(String)}
      * retrieves the equivalent file in the GitHub-pages URL.
      *
-     * @param fileName the name of the file (including intermediate directories).
+     * @param baseName the base name of the file (including intermediate directories).
      *
-     * @return URL string in GitHub-pages.
+     * @return full URL string in GitHub-pages.
      */
-    public static String getGithubPagesFileUrl(final String fileName) {
-        return GITHUP_PAGES_BASE_URL + fileName;
+    public static String getGithubPagesFullUrlName(final String baseName) {
+        return GITHUP_PAGES_BASE_URL + baseName;
     }
 
     /**
-     * Gets the path for a file in docs directory.
+     * Gets the URL for a file in the project GitHub-pages.
      *
-     * <p>Calling this method with the same file name as in {@link #getGithubPagesFileUrl(String)}
+     * @param baseName the base name of the file (including intermediate directories).
+     *
+     * @return URL string in GitHub-pages.
+     *
+     * @throws AssertionError if the URL is malformed (unexpected).
+     * @see #getGithubPagesFileUrl(String)
+     */
+    public static URL getGithubPagesFileUrl(final String baseName) {
+        try {
+            return new URL(getGithubPagesFullUrlName(baseName));
+        } catch (MalformedURLException e) {
+            throw new AssertionError("Unexpected error for GitHub file " + baseName, e);
+        }
+    }
+
+    /**
+     * Gets the full path name for a file in docs directory.
+     *
+     * <p>Calling this method with the same file name as in {@link #getGithubPagesFullUrlName(String)}
      * retrieves the equivalent file in the local file system.
      *
-     * @param fileName the name of the file (including intermediate directories).
+     * @param baseName the base name of the file (including intermediate directories).
      *
      * @return path in the local file system.
      */
-    public static String getPathFromLocalDocsFile(final String fileName) {
-        return DOCS_BASE_PATH + fileName;
+    public static String getLocalDocsFullPathName(final String baseName) {
+        return DOCS_BASE_PATH + baseName;
     }
 
+    /**
+     * Gets the Path for a file in docs directory.
+     *
+     * @param baseName the base name of the file (including intermediate directories).
+     *
+     * @return path in the local file system.
+     *
+     * @see #getLocalDocsFullPathName(String)
+     */
+    public static Path getLocalDocsFilePath(final String baseName) {
+        final Path path = new File(getLocalDocsFullPathName(baseName)).toPath();
+        return path;
+    }
 
     /**
      * Read all bytes from a provided HTTP/S {@link URL}.

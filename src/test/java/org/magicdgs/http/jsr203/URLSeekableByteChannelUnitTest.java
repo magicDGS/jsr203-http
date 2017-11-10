@@ -4,9 +4,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.io.FileNotFoundException;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.channels.ClosedChannelException;
@@ -14,7 +12,6 @@ import java.nio.channels.NonWritableChannelException;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.Iterator;
 import java.util.stream.Stream;
 
@@ -23,30 +20,15 @@ import java.util.stream.Stream;
  */
 public class URLSeekableByteChannelUnitTest extends BaseTest {
 
-    // helper method to get the GitHub pages as an URL object
-    private static URL getGithubPagesUrl(final String fileName) {
-        try {
-            return new URL(getGithubPagesFileUrl(fileName));
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("Should not happen", e);
-        }
-    }
-
-    // helper method to get teh Docs files as an URL object
-    private static Path getDocsPath(final String fileName) {
-        return new File(getPathFromLocalDocsFile(fileName)).toPath();
-    }
-
-
     @Test(expectedExceptions = FileNotFoundException.class)
     public void testNonExistentUrl() throws Exception {
-        new URLSeekableByteChannel(getGithubPagesUrl("not_existent.txt"));
+        new URLSeekableByteChannel(getGithubPagesFileUrl("not_existent.txt"));
     }
 
     @Test
-    public void testUnsupportedMethods() throws Exception {
+    public void testNonWritableChannelExceptions() throws Exception {
         try (final URLSeekableByteChannel channel =
-                new URLSeekableByteChannel(getGithubPagesUrl("file1.txt"))) {
+                new URLSeekableByteChannel(getGithubPagesFileUrl("file1.txt"))) {
             // cannot write
             Assert.assertThrows(NonWritableChannelException.class,
                     () -> channel.write(ByteBuffer.allocate(10)));
@@ -56,12 +38,48 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "getDocsFilesForTesting", dataProviderClass = GitHubResourcesIntegrationTest.class)
-    public void testSizeFromResources(final String fileName) throws Exception {
-        final URL urlFile = getGithubPagesUrl(fileName);
-        final Path localFile = getDocsPath(fileName);
+    public void testSize(final String fileName) throws Exception {
+        final URL urlFile = getGithubPagesFileUrl(fileName);
+        final Path localFile = getLocalDocsFilePath(fileName);
         try (final URLSeekableByteChannel urlChannel = new URLSeekableByteChannel(urlFile);
-                final SeekableByteChannel localChannel = Files.newByteChannel(localFile,
-                        StandardOpenOption.READ)) {
+                final SeekableByteChannel localChannel = Files.newByteChannel(localFile)) {
+            Assert.assertEquals(urlChannel.size(), localChannel.size());
+        }
+    }
+
+    @Test(dataProvider = "getDocsFilesForTesting", dataProviderClass = GitHubResourcesIntegrationTest.class)
+    public void testSizeAfterRead(final String fileName) throws Exception {
+        final URL urlFile = getGithubPagesFileUrl(fileName);
+        final Path localFile = getLocalDocsFilePath(fileName);
+        try (final URLSeekableByteChannel urlChannel = new URLSeekableByteChannel(urlFile);
+                final SeekableByteChannel localChannel = Files.newByteChannel(localFile)) {
+
+            // use the local channel size to read
+            testReadSize((int) localChannel.size(),
+                    urlChannel,
+                    localChannel);
+
+            // check that the size after read is the same
+            Assert.assertEquals(urlChannel.size(), localChannel.size());
+        }
+    }
+
+    @Test(dataProvider = "getDocsFilesForTesting", dataProviderClass = GitHubResourcesIntegrationTest.class)
+    public void testCachedSize(final String fileName) throws Exception {
+        final URL urlFile = getGithubPagesFileUrl(fileName);
+        final Path localFile = getLocalDocsFilePath(fileName);
+        try (final URLSeekableByteChannel urlChannel = new URLSeekableByteChannel(urlFile);
+                final SeekableByteChannel localChannel = Files.newByteChannel(localFile)) {
+
+            // test that the size before reading is the same (is cached)
+            Assert.assertEquals(urlChannel.size(), localChannel.size());
+
+            // use the local channel size to read
+            testReadSize((int) localChannel.size(),
+                    urlChannel,
+                    localChannel);
+
+            // check that the cached size in the URL sbc is the same as the local
             Assert.assertEquals(urlChannel.size(), localChannel.size());
         }
     }
@@ -69,8 +87,8 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
     @Test
     public void testGetPosition() throws Exception {
         // open channel
-        try (final URLSeekableByteChannel channel = new URLSeekableByteChannel(
-                getGithubPagesUrl("file1.txt"))) {
+        try (final URLSeekableByteChannel channel =
+                new URLSeekableByteChannel(getGithubPagesFileUrl("file1.txt"))) {
             int currentPosition = 0;
             Assert.assertEquals(channel.position(), currentPosition);
             final int bufferSize = Math.round(channel.size() / 10f);
@@ -85,7 +103,7 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
 
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testIllegalPosition() throws Exception {
-        new URLSeekableByteChannel(getGithubPagesUrl("file1.txt")).position(-1);
+        new URLSeekableByteChannel(getGithubPagesFileUrl("file1.txt")).position(-1);
     }
 
     @DataProvider
@@ -93,9 +111,9 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
         return Stream.of(GitHubResourcesIntegrationTest.getDocsFilesForTesting())
                 .map(data -> (String) data[0]).map(fileName ->
                         new Object[] {
-                                getGithubPagesUrl(fileName),
-                                10,
-                                getDocsPath(fileName)
+                                getGithubPagesFileUrl(fileName), // URL
+                                10,                              // position to seek
+                                getLocalDocsFilePath(fileName)   // local file
                         }).iterator();
     }
 
@@ -150,8 +168,7 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
                     actual.position(position + 10).position(position),
                     expected.position(position));
 
-            // assert that the size is the same after seek
-            Assert.assertEquals(actual.size(), expected.size());
+
         }
     }
 
@@ -161,7 +178,6 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
         final ByteBuffer expectedBuffer = ByteBuffer.allocate(size);
         final ByteBuffer actualBuffer = ByteBuffer.allocate(size);
         Assert.assertEquals(
-                // seek to position and then to the beginning of the file again
                 actual.read(expectedBuffer),
                 expected.read(actualBuffer),
                 "different number of bytes read");
@@ -174,8 +190,8 @@ public class URLSeekableByteChannelUnitTest extends BaseTest {
     @Test
     public void testClose() throws Exception {
         // open channel
-        final URLSeekableByteChannel channel =
-                new URLSeekableByteChannel(getGithubPagesUrl("file1.txt"));
+        final URLSeekableByteChannel channel = new URLSeekableByteChannel(
+                getGithubPagesFileUrl("file1.txt"));
         Assert.assertTrue(channel.isOpen());
         // close channel
         channel.close();

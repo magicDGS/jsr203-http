@@ -18,10 +18,19 @@ import java.nio.channels.SeekableByteChannel;
 /**
  * Implementation for a {@link SeekableByteChannel} for {@link URL} open as a connection.
  *
+ * <p>The current implementation is thread-safe using the {@code synchronized} keyword in every
+ * method.
+ *
  * @author Daniel Gomez-Sanchez (magicDGS)
- * @implNote this seekable byte channel is read-only..
+ * @implNote this seekable byte channel is read-only.
  */
 class URLSeekableByteChannel implements SeekableByteChannel {
+
+    // key for 'Range' request
+    private static final String RANGE_REQUEST_PROPERTY_KEY = "Range";
+    // value for 'Range' request: START + POSITION + SEPARATOR (+ END)
+    private static final String RANGE_REQUEST_PROPERTY_VALUE_START = "bytes=";
+    private static final String RANGE_REQUEST_PROPERTY_VALUE_SEPARATOR = "-";
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -45,7 +54,7 @@ class URLSeekableByteChannel implements SeekableByteChannel {
     }
 
     @Override
-    public int read(final ByteBuffer dst) throws IOException {
+    public synchronized int read(final ByteBuffer dst) throws IOException {
         final int read = channel.read(dst);
         this.position += read;
         return read;
@@ -57,7 +66,7 @@ class URLSeekableByteChannel implements SeekableByteChannel {
     }
 
     @Override
-    public long position() throws IOException {
+    public synchronized long position() throws IOException {
         if (!isOpen()) {
             throw new ClosedChannelException();
         }
@@ -65,7 +74,7 @@ class URLSeekableByteChannel implements SeekableByteChannel {
     }
 
     @Override
-    public URLSeekableByteChannel position(long newPosition) throws IOException {
+    public synchronized URLSeekableByteChannel position(long newPosition) throws IOException {
         if (newPosition < 0) {
             throw new IllegalArgumentException("Cannot seek a negative position");
         }
@@ -77,7 +86,9 @@ class URLSeekableByteChannel implements SeekableByteChannel {
             // if the current position is before, do not open a new connection
             // but skip the bytes until the new position
             final long bytesToSkip = newPosition - this.position;
-            backedStream.skip(bytesToSkip);
+            final long skipped = backedStream.skip(bytesToSkip);
+            logger.debug("Skipped {} bytes out of {} for setting position to {} (previously on {})",
+                    bytesToSkip, skipped, newPosition, position);
         } else if (this.position > newPosition) {
             // in this case, we require to re-instantiate the channel
             // opening at the new position - and closing the previous
@@ -92,7 +103,7 @@ class URLSeekableByteChannel implements SeekableByteChannel {
     }
 
     @Override
-    public long size() throws IOException {
+    public synchronized long size() throws IOException {
         if (!isOpen()) {
             throw new ClosedChannelException();
         }
@@ -108,7 +119,7 @@ class URLSeekableByteChannel implements SeekableByteChannel {
                 }
             } finally {
                 // disconnect if possible
-                disconnect(connection);
+                HttpUtils.disconnect(connection);
             }
         }
         return size;
@@ -120,37 +131,29 @@ class URLSeekableByteChannel implements SeekableByteChannel {
     }
 
     @Override
-    public boolean isOpen() {
+    public synchronized boolean isOpen() {
         return channel.isOpen();
     }
 
     @Override
-    public void close() throws IOException {
+    public synchronized void close() throws IOException {
         // this should close also the backed stream
         channel.close();
     }
 
     // open a readable byte channel for the requrested position
-    private void instantiateChannel(final long position) throws IOException {
+    private synchronized void instantiateChannel(final long position) throws IOException {
         final URLConnection connection = url.openConnection();
         if (position > 0) {
-            logger.debug("Setting Range to {}", position);
+            final String request = RANGE_REQUEST_PROPERTY_VALUE_START
+                    + position
+                    + RANGE_REQUEST_PROPERTY_VALUE_SEPARATOR;
+            logger.debug("Request '{}' {}", RANGE_REQUEST_PROPERTY_KEY, request);
             // set the range if the position is different from 0
-            connection.setRequestProperty("Range", String.format("bytes=%s-", position));
+            connection.setRequestProperty(RANGE_REQUEST_PROPERTY_KEY, request);
         }
         // get the channel from the backed stream
         backedStream = connection.getInputStream();
         channel = Channels.newChannel(backedStream);
-    }
-
-    /**
-     * Disconnects the {@link URLConnection} if it is an instance of {@link HttpURLConnection}.
-     *
-     * @param connection the connection to be disconnected.
-     */
-    private static void disconnect(final URLConnection connection) {
-        if (connection instanceof HttpURLConnection) {
-            ((HttpURLConnection) connection).disconnect();
-        }
     }
 }
