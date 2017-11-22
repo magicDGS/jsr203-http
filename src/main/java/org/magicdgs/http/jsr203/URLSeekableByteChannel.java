@@ -25,12 +25,6 @@ import java.nio.channels.SeekableByteChannel;
  */
 class URLSeekableByteChannel implements SeekableByteChannel {
 
-    // key for 'Range' request
-    private static final String RANGE_REQUEST_PROPERTY_KEY = "Range";
-    // value for 'Range' request: START + POSITION + SEPARATOR (+ END)
-    private static final String RANGE_REQUEST_PROPERTY_VALUE_START = "bytes=";
-    private static final String RANGE_REQUEST_PROPERTY_VALUE_SEPARATOR = "-";
-
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     // url and proxy for the file
@@ -144,12 +138,7 @@ class URLSeekableByteChannel implements SeekableByteChannel {
     private synchronized void instantiateChannel(final long position) throws IOException {
         final URLConnection connection = url.openConnection();
         if (position > 0) {
-            final String request = RANGE_REQUEST_PROPERTY_VALUE_START
-                    + position
-                    + RANGE_REQUEST_PROPERTY_VALUE_SEPARATOR;
-            logger.debug("Request '{}' {}", RANGE_REQUEST_PROPERTY_KEY, request);
-            // set the range if the position is different from 0
-            connection.setRequestProperty(RANGE_REQUEST_PROPERTY_KEY, request);
+            HttpUtils.setRangeRequest(connection, position, -1);
         }
         // get the channel from the backed stream
         backedStream = connection.getInputStream();
