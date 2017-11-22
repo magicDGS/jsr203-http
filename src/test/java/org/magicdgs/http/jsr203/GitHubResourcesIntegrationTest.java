@@ -31,8 +31,8 @@ public class GitHubResourcesIntegrationTest extends BaseTest {
 
     @Test(dataProvider = "getDocsFilesForTesting")
     public void testGitHubResourcesExists(final String fileName) throws Exception {
-        final URI uri = new URI(getGithubPagesFileUrl(fileName));
-        final HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
+        final HttpURLConnection connection = (HttpURLConnection)
+                getGithubPagesFileUrl(fileName).openConnection();
         try {
             connection.setRequestMethod("GET");
             connection.connect();
@@ -44,18 +44,15 @@ public class GitHubResourcesIntegrationTest extends BaseTest {
 
     @Test(dataProvider = "getDocsFilesForTesting")
     public void testLocalDocsResourcesExists(final String fileName) throws Exception {
-        Assert.assertTrue(new File(getPathFromLocalDocsFile(fileName)).exists());
+        Assert.assertTrue(Files.exists(getLocalDocsFilePath(fileName)));
     }
 
     @Test(dataProvider = "getDocsFilesForTesting")
     public void testGithubAndDocsResourcesAreEqual(final String fileName) throws Exception {
         // 1. read the local file
-        final Path localFile = new File(getPathFromLocalDocsFile(fileName)).toPath();
-        final byte[] local = Files.readAllBytes(localFile);
-
+        final byte[] local = Files.readAllBytes(getLocalDocsFilePath(fileName));
         // 2. read the GitHub-pages file
-        final URL githubUrl = new URI(getGithubPagesFileUrl(fileName)).toURL();
-        final byte[] github = readAllBytes(githubUrl);
+        final byte[] github = readAllBytes(getGithubPagesFileUrl(fileName));
 
         // assert that the same bytes were read
         Assert.assertEquals(github, local);
