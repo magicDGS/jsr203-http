@@ -10,6 +10,6 @@ public class HttpFileSystemUnitTest extends BaseTest {
 
     @Test
     public void testIsReadOnly() throws Exception {
-        Assert.assertTrue(new HttpFileSystem().isReadOnly());
+        Assert.assertTrue(new HttpFileSystem(new HttpFileSystemProvider()).isReadOnly());
     }
 }

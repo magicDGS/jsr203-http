@@ -1,8 +1,11 @@
 package org.magicdgs.http.jsr203;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.WatchService;
@@ -17,9 +20,15 @@ import java.util.Set;
  */
 final class HttpFileSystem extends FileSystem {
 
+    private final HttpAbstractFileSystemProvider provider;
+
+    HttpFileSystem(final HttpAbstractFileSystemProvider provider) {
+        this.provider = provider;
+    }
+
     @Override
     public FileSystemProvider provider() {
-        throw new UnsupportedOperationException("Not implemented");
+        return provider;
     }
 
     @Override
@@ -42,9 +51,14 @@ final class HttpFileSystem extends FileSystem {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@link HttpUtils#HTTP_PATH_SEPARATOR_STRING}.
+     */
     @Override
     public String getSeparator() {
-        throw new UnsupportedOperationException("Not implemented");
+        return HttpUtils.HTTP_PATH_SEPARATOR_STRING;
     }
 
     @Override
@@ -64,7 +78,34 @@ final class HttpFileSystem extends FileSystem {
 
     @Override
     public Path getPath(final String first, final String... more) {
-        throw new UnsupportedOperationException("Not implemented");
+        final String uriString;
+        if (more.length == 0) {
+            uriString = first;
+        } else {
+            final StringBuilder builder = new StringBuilder(first);
+            for (final String part: more) {
+                // ignore empty parts
+                if (!part.isEmpty()) {
+                    builder.append(HttpUtils.HTTP_PATH_SEPARATOR_STRING);
+                    builder.append(part);
+                }
+            }
+            uriString = builder.toString();
+        }
+
+        try {
+            // TODO - should be URL instead?
+            final URI uri = new URI(uriString);
+            if (!uri.getScheme().equalsIgnoreCase(provider.getScheme())) {
+                // TODO - should be mismatch exception?
+                throw new InvalidPathException(uriString, "invalid scheme");
+            }
+            // TODO - rest of the checking should be done in HttpPath for URI
+            return new HttpPath(uri, this);
+        } catch (URISyntaxException e) {
+            // convert into IPE
+            throw new InvalidPathException(uriString, e.getReason(), e.getIndex());
+        }
     }
 
     @Override
