@@ -14,12 +14,14 @@ import java.nio.file.FileSystem;
 import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.ProviderMismatchException;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 /**
@@ -191,7 +193,7 @@ final class HttpPath implements Path {
     }
 
     @Override
-    public Path getParent() {
+    public HttpPath getParent() {
         final int count = getNameCount();
         // no parent for no elements
         if (count == 0) {
@@ -397,22 +399,75 @@ final class HttpPath implements Path {
 
     @Override
     public Path resolve(final Path other) {
-        throw new UnsupportedOperationException("Not implemented");
+        if (!(other instanceof HttpPath)) {
+            // TODO - check if this is the proper exception to throw
+            throw new ProviderMismatchException();
+        }
+        // following the contract, for other absolute path should return the same path
+        if (other.isAbsolute()) {
+            return other;
+        }
+        final HttpPath o = (HttpPath) other;
+        // propagate the query and reference from the other Path
+        return resolve(o.normalizedPath, o.query, o.reference);
     }
 
     @Override
     public Path resolve(final String other) {
-        throw new UnsupportedOperationException("Not implemented");
+        // TODO - maybe being able to resolve a non-Path might be useful
+        return resolve(getFileSystem().getPath(other));
+    }
+
+    // TODO - document
+    private Path resolve(final byte[] other, final String query, final String reference) {
+        final byte[] resolved;
+        if (this.normalizedPath.length == 0) {
+            // method for an empty path explicitly specifies to return the other directly
+            // TODO - we should test if all the usages of this are enforced to have this
+            // TODO - also maybe we should check here the validity of other
+            // doing a copy of the array to do not produce downstream problems
+            resolved = Arrays.copyOf(other, other.length);
+        } else if (this.normalizedPath[normalizedPath.length - 1] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
+            resolved = new byte[normalizedPath.length + other.length];
+            System.arraycopy(normalizedPath, 0, resolved, 0, other.length);
+            System.arraycopy(other, 0, resolved, normalizedPath.length, other.length);
+        } else {
+            resolved = new byte[normalizedPath.length + 1 + other.length];
+            System.arraycopy(normalizedPath, 0, resolved, 0, normalizedPath.length);
+            resolved[normalizedPath.length] = HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
+            System.arraycopy(other, 0, resolved, normalizedPath.length + 1, other.length);
+        }
+        return new HttpPath(fs, authority, query, reference, resolved);
     }
 
     @Override
     public Path resolveSibling(final Path other) {
-        throw new UnsupportedOperationException("Not implemented");
+        if (other == null) {
+            throw new NullPointerException();
+        }
+        final Path parent = getParent();
+        return (parent == null) ? other : parent.resolve(other);
     }
 
     @Override
     public Path resolveSibling(final String other) {
-        throw new UnsupportedOperationException("Not implemented");
+        if (other == null) {
+            throw new NullPointerException();
+        }
+        // first try to parse the other as an valid URL for converting to a HTTP/S path
+        try {
+            return resolveSibling(getFileSystem().getPath(other));
+        }  catch (final InvalidPathException e) {
+            // in the case that "other" is not a valid HTTP/S URL, treat it as a Path component
+            // this will allow to resolve "file.txt" for http://example.com/directory/file.txt
+            // returning "http://example.com/directory/file.txt"
+            // TODO - the contract suggest to throw InvalidPathException if the String cannot be
+            // TODO - converted into a Path and this is not completely true with this implementation
+            // TODO - e.g., testing if https://example.com/file.txt ends with "file://file.txt"
+            // TODO - should throw because there is a mismatch with the providers
+            // TODO - I do not think that this is an issue, but might be a problem for users
+            return getParent().resolve(getNormalizedPathBytes(other), null, null);
+        }
     }
 
     @Override
@@ -480,7 +535,30 @@ final class HttpPath implements Path {
 
     @Override
     public Iterator<Path> iterator() {
-        throw new UnsupportedOperationException("Not implemented");
+        return new Iterator<Path>() {
+            private int i = 0;
+
+            @Override
+            public boolean hasNext() {
+                return this.i < getNameCount();
+            }
+
+            @Override
+            public Path next() {
+                if (!hasNext()) {
+                    throw new NoSuchElementException();
+                }
+
+                final Path next = getName(i);
+                ++this.i;
+                return next;
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     @Override

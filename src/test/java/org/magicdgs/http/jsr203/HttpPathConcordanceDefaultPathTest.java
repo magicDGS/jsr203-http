@@ -9,6 +9,11 @@ import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
+import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
 /**
@@ -33,7 +38,7 @@ public class HttpPathConcordanceDefaultPathTest extends BaseTest {
 
     static {
         try {
-            EXAMPLE_ROOT = new URI("http:://example.com");
+            EXAMPLE_ROOT = new URI("http://example.com");
         } catch (URISyntaxException e) {
             throw new RuntimeException("Should not happen");
         }
@@ -49,8 +54,7 @@ public class HttpPathConcordanceDefaultPathTest extends BaseTest {
         }
         url += pathWithinRoot.toString();
 
-        final URI asUri = new URI(url);
-        return new HttpPath(asUri, HTTP_FILE_SYSTEM);
+        return new HttpPath(new URI(url), HTTP_FILE_SYSTEM);
     }
 
     /**
@@ -138,5 +142,76 @@ public class HttpPathConcordanceDefaultPathTest extends BaseTest {
             final int i = count;
             concordantPathTest(pathWithinRoot, p -> p.getName(i));
         }
+    }
+
+    @DataProvider
+    public Iterator<Object[]> getResolveTestData() throws Exception {
+        final Object[][] concordanceData = getConcordanceTestData();
+        final List<Object[]> toReturn = new ArrayList<>(concordanceData.length * concordanceData.length);
+        for (int i = 0; i < concordanceData.length; i++) {
+            for (int j = 0; j < concordanceData.length; j++) {
+                final Object[] iConcordanceData = concordanceData[i];
+                final Object[] jConcordanceData = concordanceData[j];
+                final Object[] data = new Object[iConcordanceData.length + jConcordanceData.length];
+                System.arraycopy(iConcordanceData, 0, data, 0, iConcordanceData.length);
+                System.arraycopy(jConcordanceData, 0, data, iConcordanceData.length, jConcordanceData.length);
+                toReturn.add(data);
+            }
+        }
+        return toReturn.iterator();
+    }
+
+    private static void concordantPathTestResolver(final Path pathWithinRoot,
+            final Function<Path, Path> testMethod) throws Exception {
+        // create the actual path to test
+        final Path actual = testMethod.apply(createHttpPath(pathWithinRoot));
+        final Path expected = testMethod.apply(pathWithinRoot);
+
+        if (actual == null) {
+            // if the method returns null for the actual Path, it should do the same for the expected
+            Assert.assertNull(expected);
+        } else {
+            // same absolute status
+            Assert.assertEquals(actual.isAbsolute(), expected.isAbsolute(),
+                    // for debugging this incompatibility
+                    "isAbsolute for HTTP/S (" + actual + ") different from " + expected);
+
+            // create as an HTTP/path by appending the root to the URI
+            final HttpPath expectedHttp = createHttpPath(expected);
+
+            if (actual.isAbsolute()) {
+                // test the String representation
+                Assert.assertEquals(actual.toString(), expectedHttp.toString());
+                // finally, check that the URI representation is the same
+                Assert.assertEquals(actual.toUri(), expectedHttp.toUri());
+            } else {
+                // TODO - do not skip once relative Path is supported
+                throw new SkipException("Cannot test concordance for relative path: " + actual);
+            }
+        }
+    }
+
+    @Test(dataProvider = "getResolveTestData")
+    public void testResolveSiblingConcordance(final Path pathWithinRoot, final Path toResolve) throws Exception {
+        final HttpPath httpToResolve = createHttpPath(toResolve);
+        concordantPathTestResolver(pathWithinRoot, (path) -> {
+            if (path instanceof HttpPath) {
+                return path.resolveSibling(httpToResolve);
+            } else {
+                return path.resolveSibling(toResolve);
+            }
+        });
+    }
+
+    @Test(dataProvider = "getResolveTestData")
+    public void testResolveConcordance(final Path pathWithinRoot, final Path toResolve) throws Exception {
+        final HttpPath httpToResolve = createHttpPath(toResolve);
+        concordantPathTestResolver(pathWithinRoot, (path) -> {
+            if (path instanceof HttpPath) {
+                return path.resolve(httpToResolve);
+            } else {
+                return path.resolve(toResolve);
+            }
+        });
     }
 }

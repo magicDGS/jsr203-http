@@ -23,6 +23,7 @@ public class HttpPathUnitTest extends BaseTest {
     public void testNormalizeSeveralSlashes() throws Exception {
         final URI uri = new URI("http://example.com//directory//file.txt");
         final HttpPath path = new HttpPath(uri, HTTP_FILE_SYSTEM);
+        Assert.assertNotEquals(path.toUri(), uri);
         Assert.assertEquals(path.toUri(), new URI("http://example.com/directory/file.txt"));
         Assert.assertEquals(path.toString(), "example.com/directory/file.txt");
     }
