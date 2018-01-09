@@ -17,9 +17,23 @@ import java.util.Set;
  */
 final class HttpFileSystem extends FileSystem {
 
+    private final HttpAbstractFileSystemProvider provider;
+
+    // TODO - remove this constructor (only kept for testing)
+    HttpFileSystem() {
+        this.provider = null;
+    }
+
+    HttpFileSystem(final HttpAbstractFileSystemProvider provider) {
+        if (provider == null) {
+            throw new IllegalArgumentException("Null FileSystemProvider");
+        }
+        this.provider = provider;
+    }
+
     @Override
     public FileSystemProvider provider() {
-        throw new UnsupportedOperationException("Not implemented");
+        return provider;
     }
 
     @Override
