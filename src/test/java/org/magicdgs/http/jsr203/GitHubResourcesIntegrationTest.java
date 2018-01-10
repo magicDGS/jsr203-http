@@ -4,12 +4,8 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.io.File;
 import java.net.HttpURLConnection;
-import java.net.URI;
-import java.net.URL;
 import java.nio.file.Files;
-import java.nio.file.Path;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
