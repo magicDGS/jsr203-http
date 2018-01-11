@@ -339,8 +339,6 @@ final class HttpPath implements Path {
         }
     }
 
-    // TODO - should cache lazily?
-
     /**
      * {@inheritDoc}
      *
