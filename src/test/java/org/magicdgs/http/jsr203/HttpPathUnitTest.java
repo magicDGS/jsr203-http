@@ -6,52 +6,38 @@ import org.testng.annotations.Test;
 
 import java.net.MalformedURLException;
 import java.net.URI;
-import java.net.URL;
+import java.nio.file.InvalidPathException;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public class HttpPathUnitTest extends BaseTest {
 
-    private final HttpFileSystemProvider TEST_FS_PROVIDER = new HttpFileSystemProvider();
-    private final HttpFileSystem TEST_FS = new HttpFileSystem(TEST_FS_PROVIDER);
+    private static final HttpFileSystemProvider TEST_FS_PROVIDER = new HttpFileSystemProvider();
+    private static final String TEST_AUTHORITY = "example.com";
+    private final HttpFileSystem TEST_FS = new HttpFileSystem(TEST_FS_PROVIDER, TEST_AUTHORITY);
 
-    @DataProvider
-    public Object[][] invalidUris() {
-        return new Object[][] {
-                // NPE for null FileSystem and URI/URL
-                {URI.create("http://example.com"), null, NullPointerException.class},
-                {null, TEST_FS, NullPointerException.class},
-                // IAE for no authority, and different scheme
-                {URI.create("http:/file.txt"), TEST_FS, IllegalArgumentException.class},
-                {URI.create("https://example.com/file.txt"), TEST_FS, IllegalArgumentException.class}
-                // URI cannot have relative paths
-        };
+    private static final HttpPath createPathFromUriOnTestProvider(final URI uri) {
+        return new HttpPath(
+                new HttpFileSystem(TEST_FS_PROVIDER, uri.getAuthority()),
+                uri.getPath(), uri.getQuery(), uri.getFragment());
     }
 
-    @Test(dataProvider = "invalidUris")
-    public void testIllegalArgsForUriConstructor(final URI uri, final HttpFileSystem fs,
-            final Class<Throwable> exceptionClass) {
-        Assert.assertThrows(exceptionClass, () -> new HttpPath(uri, fs));
+    private static final HttpPath createPathFromUriStringOnTestProvider(final String uriString) {
+        return createPathFromUriOnTestProvider(URI.create(uriString));
     }
 
     @DataProvider
-    public Object[][] invalidUrls() throws Exception {
+    public Object[][] invalidConstructorArgs() {
         return new Object[][] {
-                // NPE for null FileSystem and URI/URL
-                {new URL("http://example.com"), null, NullPointerException.class},
-                {null, TEST_FS, NullPointerException.class},
-                /// IAE for no authority, different scheme and relative path
-                {new URL("http:/file.txt"), TEST_FS, IllegalArgumentException.class},
-                {new URL("https://example.com/file.txt"), TEST_FS, IllegalArgumentException.class},
-                {new URL("http", "example.com", "hello"), TEST_FS, IllegalArgumentException.class}
+                {"relative_path", TEST_FS, IllegalArgumentException.class},
+                {"null_\0_in_path", TEST_FS, InvalidPathException.class}
         };
     }
 
-    @Test(dataProvider = "invalidUrls")
-    public void testIllegalArgsForUrlConstructor(final URL url, final HttpFileSystem fs,
-            final Class<Throwable> exceptionClass) {
-        Assert.assertThrows(exceptionClass, () -> new HttpPath(url, fs));
+    @Test(dataProvider = "invalidConstructorArgs")
+    public void testInvalidConstruction(final String path, final HttpFileSystem fs, Class<Throwable> exception) {
+        Assert.assertThrows(exception, () -> new HttpPath(fs, path, null, null));
     }
 
     @DataProvider
@@ -70,18 +56,12 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "validUriStrings")
-    public void testToUri(final String uriString) {
+    public void testToUri(final String uriString) throws MalformedURLException {
         final URI uri = URI.create(uriString);
-        final HttpPath path = new HttpPath(uri, TEST_FS);
+        final HttpPath path = createPathFromUriOnTestProvider(uri);
         Assert.assertNotSame(path.toUri(), uri);
         Assert.assertEquals(path.toUri(), uri);
-    }
-
-    @Test(dataProvider = "validUriStrings")
-    public void testToUriFromURL(final String uriString) throws MalformedURLException {
-        final URL url = URI.create(uriString).toURL();
-        final HttpPath path = new HttpPath(url, TEST_FS);
-        Assert.assertEquals(path.toUri().toURL(), url);
+        Assert.assertEquals(path.toUri().toURL(), uri.toURL());
     }
 
     @DataProvider
@@ -194,24 +174,26 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "compareToUriStrings")
-    public void testCompareTo(final String first, final String second, final int result) {
-        final HttpPath firstPath = new HttpPath(URI.create(first), TEST_FS);
-        final HttpPath secondPath = new HttpPath(URI.create(second), TEST_FS);
+    public void testCompareTo(final String uriString1, final String uriString2, final int result) {
+        final HttpPath firstPath = createPathFromUriStringOnTestProvider(uriString1);
+        final HttpPath secondPath = createPathFromUriStringOnTestProvider(uriString2);
         Assert.assertEquals(firstPath.compareTo(secondPath), result);
     }
 
     @Test
     public void testCompareToDifferentProviders() {
-        final String uriString = "example.com";
-        final HttpPath httpPath = new HttpPath(URI.create("http://" + uriString), TEST_FS);
-        final HttpPath httpsPath = new HttpPath(URI.create("https://" + uriString), new HttpFileSystem(new HttpsFileSystemProvider()));
+        final String path = "/index.html";
+        final HttpPath httpPath = new HttpPath(TEST_FS, path, null, null);
+        final HttpPath httpsPath = new HttpPath(
+                new HttpFileSystem(new HttpsFileSystemProvider(), TEST_AUTHORITY),
+                path, null, null);
         Assert.assertThrows(ClassCastException.class, () -> httpPath.compareTo(httpsPath));
     }
 
     @Test(dataProvider = "compareToUriStrings")
     public void testEquals(final String first, final String second, final int result) {
-        final HttpPath firstPath = new HttpPath(URI.create(first), TEST_FS);
-        final HttpPath secondPath = new HttpPath(URI.create(second), TEST_FS);
+        final HttpPath firstPath = createPathFromUriStringOnTestProvider(first);
+        final HttpPath secondPath = createPathFromUriStringOnTestProvider(second);
         if (result == 0) {
             assertEqualsPath(firstPath, secondPath);
         } else {
@@ -222,64 +204,62 @@ public class HttpPathUnitTest extends BaseTest {
     @Test
     public void testEqualsDifferentObject() {
         final String uriString = "http://example.com";
-        final HttpPath path = new HttpPath(URI.create(uriString), TEST_FS);
+        final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
         Assert.assertFalse(path.equals(uriString));
     }
 
     @Test
     public void testEqualsSamObject() {
-        final HttpPath path = new HttpPath(URI.create("http://example.com/index.html"), TEST_FS);
+        final HttpPath path = createPathFromUriStringOnTestProvider("http://example.com/index.html");
         assertEqualsPath(path, path);
     }
 
     @Test
     public void testEqualsDifferentProvider() {
-        final String uriString = "example.com";
-        final HttpPath httpPath = new HttpPath(URI.create("http://" + uriString), TEST_FS);
-        final HttpPath httpsPath = new HttpPath(URI.create("https://" + uriString), new HttpFileSystem(new HttpsFileSystemProvider()));
+        final HttpPath httpPath = createPathFromUriStringOnTestProvider("http://" + TEST_AUTHORITY);
+        final HttpPath httpsPath = new HttpPath(
+                new HttpFileSystem(new HttpsFileSystemProvider(), TEST_AUTHORITY),
+                "", null, null);
         assertNotEqualsPath(httpPath, httpsPath);
     }
 
     @Test(dataProvider = "validUriStrings")
     public void testHashCodeSameObject(final String uriString) {
-        final HttpPath path = new HttpPath(URI.create(uriString), TEST_FS);
+        final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
         Assert.assertEquals(path.hashCode(), path.hashCode());
     }
 
     @Test(dataProvider = "validUriStrings")
     public void testHashCodeEqualObjects(final String uriString) {
-        Assert.assertEquals(new HttpPath(URI.create(uriString), TEST_FS).hashCode(),
-                new HttpPath(URI.create(uriString), TEST_FS).hashCode());
+        Assert.assertEquals(createPathFromUriStringOnTestProvider(uriString).hashCode(),
+                createPathFromUriStringOnTestProvider(uriString).hashCode());
     }
 
     @Test(dataProvider = "validUriStrings")
     public void testToString(final String uriString) {
-        final HttpPath path = new HttpPath(URI.create(uriString), TEST_FS);
+        final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
         Assert.assertEquals(path.toString(), uriString);
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
     public void testToFile() {
-        new HttpPath(URI.create("http://example.com"), TEST_FS).toFile();
+        new HttpPath(TEST_FS, "", null, null).toFile();
     }
 
     @DataProvider
-    public Object[][] severalSlashesUris() {
+    public Object[][] severalSlashesPaths() {
         return new Object[][] {
-                {"http://example.com//dir//file.txt", "http://example.com/dir/file.txt"},
-                {"http://example.com/dir//file.txt", "http://example.com/dir/file.txt"},
-                {"http://example.com//dir/file.txt", "http://example.com/dir/file.txt"}
+                {"//dir//file.txt", "/dir/file.txt"},
+                {"/dir//file.txt", "/dir/file.txt"},
+                {"//dir/file.txt", "/dir/file.txt"}
         };
     }
 
-    @Test(dataProvider = "severalSlashesUris")
+    @Test(dataProvider = "severalSlashesPaths")
     public void testNormalizeSeveralSlashes(final String withSlashes, final String withoutSlashes) {
         // this test that, independently of the number of slashes, the stored Path is normalized
-        final URI severalSlashesUri = URI.create(withSlashes);
-        final URI oneSlashUri = URI.create(withoutSlashes);
-        Assert.assertNotEquals(severalSlashesUri, oneSlashUri, "URIs shouldn't be equal for this test");
         assertEqualsPath(
-                new HttpPath(severalSlashesUri, TEST_FS),
-                new HttpPath(oneSlashUri, TEST_FS));
+                new HttpPath(TEST_FS, withSlashes, null, null),
+                new HttpPath(TEST_FS, withoutSlashes, null, null));
     }
 }
