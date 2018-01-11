@@ -1,5 +1,7 @@
 package org.magicdgs.http.jsr203;
 
+import org.testng.Assert;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.InputStream;
@@ -125,4 +127,63 @@ public class BaseTest {
         }
     }
 
+    /**
+     * Asserts that the {@link Path#equals(Object)} method returns {@code true}.
+     *
+     * <p>This is required because, by default, any test with {@link Assert} for {@link Path} will
+     * use the implementation of {@link Assert#assertEquals(Iterable, Iterable)}. This method
+     * enforces to use the {@link Path#equals(Object)} method instead.
+     *
+     * @param actual the actual path.
+     * @param expected the expected path.
+     * @param msg error message if assertion fails.
+     */
+    public static void assertEqualsPath(final Path actual, final Path expected, final String msg) {
+        // enforce the use of equals for object
+        Assert.assertEquals((Object) actual, (Object) expected, msg);
+    }
+
+    /**
+     * Asserts that the {@link Path#equals(Object)} method returns {@code true}.
+     *
+     * <p>This is required because, by default, any test with {@link Assert} for {@link Path} will
+     * use the implementation of {@link Assert#assertEquals(Iterable, Iterable)}. This method
+     * enforces to use the {@link Path#equals(Object)} method instead.
+     *
+     * @param actual the actual path.
+     * @param expected the expected path.
+     */
+    public static void assertEqualsPath(final Path actual, final Path expected) {
+        assertEqualsPath(actual, expected, null);
+    }
+
+    /**
+     * Asserts that the {@link Path#equals(Object)} method returns {@code true}.
+     *
+     * <p>This is required because, by default, any test with {@link Assert} for {@link Path} will
+     * use the implementation of {@link Assert#assertEquals(Iterable, Iterable)}. This method
+     * enforces to use the {@link Path#equals(Object)} method instead.
+     *
+     * @param actual the actual path.
+     * @param expected the expected path.
+     * @param msg error message if assertion fails.
+     */
+    public static void assertNotEqualsPath(final Path actual, final Path expected, final String msg) {
+        // enforce the use of equals for object
+        Assert.assertNotEquals((Object) actual, (Object) expected, msg);
+    }
+
+    /**
+     * Asserts that the {@link Path#equals(Object)} method returns {@code true}.
+     *
+     * <p>This is required because, by default, any test with {@link Assert} for {@link Path} will
+     * use the implementation of {@link Assert#assertEquals(Iterable, Iterable)}. This method
+     * enforces to use the {@link Path#equals(Object)} method instead.
+     *
+     * @param actual the actual path.
+     * @param expected the expected path.
+     */
+    public static void assertNotEqualsPath(final Path actual, final Path expected) {
+        assertNotEqualsPath(actual, expected, null);
+    }
 }

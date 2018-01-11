@@ -17,9 +17,28 @@ import java.util.Set;
  */
 final class HttpFileSystem extends FileSystem {
 
+    private final HttpAbstractFileSystemProvider provider;
+
+    // TODO - remove this constructor (https://github.com/magicDGS/jsr203-http/issues/17)
+    HttpFileSystem() {
+        this.provider = null;
+    }
+
+    /**
+     * Construct a new FileSystem.
+     *
+     * @param provider non {@code null} provider that generated this HTTP/S File System.
+     */
+    HttpFileSystem(final HttpAbstractFileSystemProvider provider) {
+        if (provider == null) {
+            throw new NullPointerException("Null FileSystemProvider");
+        }
+        this.provider = provider;
+    }
+
     @Override
     public FileSystemProvider provider() {
-        throw new UnsupportedOperationException("Not implemented");
+        return provider;
     }
 
     @Override
