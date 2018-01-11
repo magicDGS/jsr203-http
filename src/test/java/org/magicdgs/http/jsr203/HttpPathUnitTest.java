@@ -4,6 +4,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 
@@ -57,7 +58,6 @@ public class HttpPathUnitTest extends BaseTest {
     public Object[][] validUriStrings() {
         return new Object[][] {
                 {"http://example.com"},
-                {"http://example.com/"},
                 {"http://example.com/index.html"},
                 {"http://example.com/file.txt?query=hello+world"},
                 {"http://example.com/file.pdf#1"},
@@ -67,6 +67,21 @@ public class HttpPathUnitTest extends BaseTest {
                 {"http://example.com/directory/file.pdf#1"},
                 {"http://example.com/file.gz?query=hello+world#2"},
         };
+    }
+
+    @Test(dataProvider = "validUriStrings")
+    public void testToUri(final String uriString) {
+        final URI uri = URI.create(uriString);
+        final HttpPath path = new HttpPath(uri, TEST_FS);
+        Assert.assertNotSame(path.toUri(), uri);
+        Assert.assertEquals(path.toUri(), uri);
+    }
+
+    @Test(dataProvider = "validUriStrings")
+    public void testToUriFromURL(final String uriString) throws MalformedURLException {
+        final URL url = URI.create(uriString).toURL();
+        final HttpPath path = new HttpPath(url, TEST_FS);
+        Assert.assertEquals(path.toUri().toURL(), url);
     }
 
     @DataProvider
@@ -235,6 +250,12 @@ public class HttpPathUnitTest extends BaseTest {
     public void testHashCodeEqualObjects(final String uriString) {
         Assert.assertEquals(new HttpPath(URI.create(uriString), TEST_FS).hashCode(),
                 new HttpPath(URI.create(uriString), TEST_FS).hashCode());
+    }
+
+    @Test(dataProvider = "validUriStrings")
+    public void testToString(final String uriString) {
+        final HttpPath path = new HttpPath(URI.create(uriString), TEST_FS);
+        Assert.assertEquals(path.toString(), uriString);
     }
 
     @Test(expectedExceptions = UnsupportedOperationException.class)
