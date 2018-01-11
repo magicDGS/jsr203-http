@@ -8,7 +8,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.FileSystem;
-import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
@@ -20,6 +19,29 @@ import java.util.Objects;
 
 /**
  * {@link Path} for HTTP/S.
+ *
+ * <p>The HTTP/S paths holds the following information:
+ *
+ * <ul>
+ *
+ * <li>
+ * The {@link HttpFileSystem} originating the path. The protocol is retrieved, if necessary,
+ * from the provider of the File System.
+ * </li>
+ *
+ * <li>
+ * The hostname and domain for the URL/URI in a single authority String.
+ * </li>
+ *
+ * <li>
+ * If present, the path component of the URL/URI.
+ * </li>
+ *
+ * <li>
+ * If present, the query and reference Strings.
+ * </li>
+ *
+ * </ul>
  *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
@@ -42,10 +64,10 @@ final class HttpPath implements Path {
     /**
      * Internal constructor.
      *
-     * @param fs file system. Shouldn't be {@code null}.
-     * @param authority authority. Shouldn't be {@code null}.
-     * @param query query. May be {@code null}.
-     * @param reference reference. May be {@code null}.
+     * @param fs             file system. Shouldn't be {@code null}.
+     * @param authority      authority. Shouldn't be {@code null}.
+     * @param query          query. May be {@code null}.
+     * @param reference      reference. May be {@code null}.
      * @param normalizedPath normalized path (as a byte array). Shouldn't be {@code null}.
      *
      * @implNote does not perform any check for efficiency.
@@ -65,10 +87,10 @@ final class HttpPath implements Path {
     }
 
     /**
-     * Constructor for an URL.
+     * URI constructor.
      *
      * @param uri HTTP/S URI.
-     * @param fs file system used to create the path.
+     * @param fs  file system used to create the path.
      */
     HttpPath(final URI uri, final HttpFileSystem fs) {
         this(checkScheme(fs, uri.getScheme()),
@@ -79,10 +101,10 @@ final class HttpPath implements Path {
     }
 
     /**
-     * Constructor for an URL.
+     * URL constructor.
      *
      * @param url HTTP/S URL.
-     * @param fs file system used to create the path.
+     * @param fs  file system used to create the path.
      */
     HttpPath(final URL url, final HttpFileSystem fs) {
         this(checkScheme(fs, url.getProtocol()),
@@ -118,6 +140,7 @@ final class HttpPath implements Path {
 
     @Override
     public boolean isAbsolute() {
+        // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
         return true;
     }
 
@@ -205,8 +228,8 @@ final class HttpPath implements Path {
     public URI toUri() {
         try {
             return new URI(fs.provider().getScheme(), authority,
-                        new String(normalizedPath, HttpUtils.HTTP_PATH_CHARSET),
-                        query, reference);
+                    new String(normalizedPath, HttpUtils.HTTP_PATH_CHARSET),
+                    query, reference);
         } catch (final URISyntaxException e) {
             throw new IOError(e);
         }
@@ -217,7 +240,8 @@ final class HttpPath implements Path {
         if (isAbsolute()) {
             return this;
         }
-        throw new IllegalStateException("Relative HTTP/S paths are not supported in the current implementation");
+        // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
+        throw new IllegalStateException("Should not appear a relative HTTP/S paths (unsupported)");
     }
 
     @Override
@@ -248,6 +272,14 @@ final class HttpPath implements Path {
         throw new UnsupportedOperationException("Not implemented");
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @implNote comparison of every component of the HTTP/S path is case-sensitive, except the
+     * scheme and the authority.
+     * @implNote if the query and/or reference are present, this method order the one without any
+     * of them first.
+     */
     @Override
     public int compareTo(final Path other) {
         if (this == other) {
@@ -270,7 +302,7 @@ final class HttpPath implements Path {
         final int len1 = normalizedPath.length;
         final int len2 = httpOther.normalizedPath.length;
         final int n = Math.min(len1, len2);
-        for(int k = 0; k < n; k++) {
+        for (int k = 0; k < n; k++) {
             // this is case sensitive
             comparison = Byte.compare(this.normalizedPath[k], httpOther.normalizedPath[k]);
             if (comparison != 0) {
@@ -289,9 +321,15 @@ final class HttpPath implements Path {
         }
 
         // otherwise, just return the value of comparing the fragment
-        return Comparator.nullsFirst(String::compareTo).compare(this.reference, httpOther.reference);
+        return Comparator.nullsFirst(String::compareTo)
+                .compare(this.reference, httpOther.reference);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @implNote it uses the {@link #compareTo(Path)} method.
+     */
     @Override
     public boolean equals(final Object other) {
         try {
@@ -302,9 +340,18 @@ final class HttpPath implements Path {
     }
 
     // TODO - should cache lazily?
+
+    /**
+     * {@inheritDoc}
+     *
+     * @implNote Includes all the components of the path in a case-sensitive way, except the scheme
+     * and the authority.
+     */
     @Override
     public int hashCode() {
-        int h = authority.toLowerCase().hashCode();
+        // TODO - maybe we should cache (https://github.com/magicDGS/jsr203-http/issues/18)
+        int h = fs.hashCode();
+        h = 31 * h + authority.toLowerCase().hashCode();
         for (int i = 0; i < normalizedPath.length; i++) {
             h = 31 * h + (normalizedPath[i] & 0xff);
         }
@@ -315,18 +362,27 @@ final class HttpPath implements Path {
 
     @Override
     public String toString() {
-        // TODO - should cache lazily?
-        final StringBuilder sb = new StringBuilder(authority);
-        sb.append(new String(normalizedPath, HttpUtils.HTTP_PATH_CHARSET));
+        // TODO - maybe we should cache (https://github.com/magicDGS/jsr203-http/issues/18)
+        // adding scheme, authority and normalized path
+        final StringBuilder sb = new StringBuilder(fs.provider().getScheme()) // scheme
+                .append("://")
+                .append(authority)
+                .append(new String(normalizedPath, HttpUtils.HTTP_PATH_CHARSET));
+        if (query != null) {
+            sb.append('?').append(query);
+        }
+        if (reference != null) {
+            sb.append('#').append(reference);
+        }
         return sb.toString();
     }
 
 
     /////////////////////////////////////////
-    // helper method for path as byte[]
+    // helper methods for path as byte[]
 
     private static byte[] getNormalizedPathBytes(final String path) {
-        // TODO - remove when relative HTTP/S path are supported
+        // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
         if (!path.isEmpty() && !path.startsWith(HttpUtils.HTTP_PATH_SEPARATOR_STRING)) {
             throw new IllegalArgumentException("Relative HTTP/S path are not supported");
         }
@@ -337,12 +393,12 @@ final class HttpPath implements Path {
         final int len = path.length();
 
         char prevChar = 0;
-        for(int i = 0; i < len; i++) {
+        for (int i = 0; i < len; i++) {
             char c = path.charAt(i);
             if (isDoubleSeparator(prevChar, c)) {
                 return getNormalizedPathBytes(path, len, i - 1);
             }
-            prevChar = checkNotNull(path, c);
+            prevChar = checkNotNull(c);
         }
         if (prevChar == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
             return getNormalizedPathBytes(path, len, len - 1);
@@ -351,7 +407,8 @@ final class HttpPath implements Path {
         return path.getBytes(HttpUtils.HTTP_PATH_CHARSET);
     }
 
-    private static byte[] getNormalizedPathBytes(final String path, final int len, final int offset) {
+    private static byte[] getNormalizedPathBytes(final String path, final int len,
+            final int offset) {
         // get first the last offset
         int lastOffset = len;
         while (lastOffset > 0
@@ -373,13 +430,13 @@ final class HttpPath implements Path {
                 if (isDoubleSeparator(prevChar, c)) {
                     continue;
                 }
-                prevChar = checkNotNull(path, c);
+                prevChar = checkNotNull(c);
                 os.write(c);
             }
 
             return os.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException("Should not happen");
+        } catch (final IOException e) {
+            throw new RuntimeException("Should not happen", e);
         }
     }
 
@@ -388,9 +445,9 @@ final class HttpPath implements Path {
                 && prevChar == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
     }
 
-    private static char checkNotNull(String input, char c) {
+    private static char checkNotNull(char c) {
         if (c == '\u0000') {
-            throw new InvalidPathException(input, "Nul character not allowed");
+            throw new IllegalArgumentException("Null character not allowed in path");
         }
         return c;
     }

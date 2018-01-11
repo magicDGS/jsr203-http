@@ -10,11 +10,20 @@ import java.nio.charset.Charset;
 /**
  * Utility class for working with HTTP/S connections and URLs.
  *
- * <p>Includes also constants for HTTP/S
+ * <p>Includes also constants for HTTP/S.
  *
  * @author Daniel Gomez-Sanchez (magicDGS)
  */
 public final class HttpUtils {
+
+    /** Separator {@code String} for path component of HTTP/S URL. */
+    public static final String HTTP_PATH_SEPARATOR_STRING = "/";
+
+    /** Separator {@code char} for path component of HTTP/S URL. */
+    public static final char HTTP_PATH_SEPARATOR_CHAR = '/';
+
+    /** Charset for path component of HTTP/S URL. */
+    public static final Charset HTTP_PATH_CHARSET = Charset.forName("UTF-8");
 
     // key for 'Range' request
     private static final String RANGE_REQUEST_PROPERTY_KEY = "Range";
@@ -27,15 +36,6 @@ public final class HttpUtils {
 
     // utility class - cannot be instantiated
     private HttpUtils() {}
-
-    /** Separator {@code String} for path component of HTTP/S URL. */
-    public static final String HTTP_PATH_SEPARATOR_STRING = "/";
-
-    /** Separator {@code char} for path component of HTTP/S URL. */
-    public static final char HTTP_PATH_SEPARATOR_CHAR = '/';
-
-    /** Charset for path component of HTTP/S URL. */
-    public static final Charset HTTP_PATH_CHARSET = Charset.forName("UTF-8");
 
     /**
      * Disconnects the {@link URLConnection} if it is an instance of {@link HttpURLConnection}.
