@@ -41,7 +41,7 @@ class URLSeekableByteChannel implements SeekableByteChannel {
 
 
     URLSeekableByteChannel(final URL url) throws IOException {
-        this.url = url;
+        this.url = Utils.nonNull(url, () -> "null URL");
         // and instantiate the stream/channel at position 0
         instantiateChannel(this.position);
     }

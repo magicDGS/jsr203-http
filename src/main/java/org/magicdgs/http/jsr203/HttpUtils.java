@@ -43,6 +43,7 @@ public final class HttpUtils {
      * @param connection the connection to be disconnected.
      */
     public static void disconnect(final URLConnection connection) {
+        Utils.nonNull(connection, () -> "null URL connection");
         if (connection instanceof HttpURLConnection) {
             ((HttpURLConnection) connection).disconnect();
         }
@@ -60,6 +61,7 @@ public final class HttpUtils {
      */
     public static void setRangeRequest(final URLConnection connection, final long start,
             final long end) {
+        Utils.nonNull(connection, () -> "Null URLConnection");
         // setting the request range
         String request = RANGE_REQUEST_PROPERTY_VALUE_START
                 + start
@@ -78,5 +80,4 @@ public final class HttpUtils {
         // set the range if the position is different from 0
         connection.setRequestProperty(RANGE_REQUEST_PROPERTY_KEY, request);
     }
-
 }

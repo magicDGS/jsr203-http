@@ -35,4 +35,13 @@ public class HttpUtilsUnitTest extends BaseTest {
         HttpUtils.setRangeRequest(connection, start, end);
     }
 
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testDisconnectNull() {
+        HttpUtils.disconnect(null);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testSetRangeRequestNull() {
+        HttpUtils.setRangeRequest(null, 10, 100);
+    }
 }

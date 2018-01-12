@@ -30,10 +30,7 @@ final class HttpFileSystem extends FileSystem {
      * @param provider non {@code null} provider that generated this HTTP/S File System.
      */
     HttpFileSystem(final HttpAbstractFileSystemProvider provider) {
-        if (provider == null) {
-            throw new NullPointerException("Null FileSystemProvider");
-        }
-        this.provider = provider;
+        this.provider = Utils.nonNull(provider, () -> "null provider");
     }
 
     @Override
