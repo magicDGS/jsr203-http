@@ -4,9 +4,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
-import java.net.URI;
 import java.nio.file.InvalidPathException;
-import java.nio.file.ProviderMismatchException;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -59,14 +57,14 @@ public class HttpFileSystemUnitTest extends BaseTest {
                         new HttpPath(fs, "", null, null)},
                 // only paths
                 {fs, file, empty,
-                        new HttpPath(fs , file, null, null)},
+                        new HttpPath(fs, file, null, null)},
                 {fs, dir + file, empty,
                         new HttpPath(fs, dir + file, null, null)},
-                {fs, dir, new String[]{file},
+                {fs, dir, new String[] {file},
                         new HttpPath(fs, dir + file, null, null)},
-                {fs, dir + dir, new String[]{file},
+                {fs, dir + dir, new String[] {file},
                         new HttpPath(fs, dir + dir + file, null, null)},
-                {fs, dir, new String[]{dir, file},
+                {fs, dir, new String[] {dir, file},
                         new HttpPath(fs, dir + dir + file, null, null)},
                 // only path + query
                 {fs, dir + file + '?' + query, empty,
@@ -95,7 +93,7 @@ public class HttpFileSystemUnitTest extends BaseTest {
                 // null containing path
                 {"/directory\0null", empty},
                 // joining invalid more
-                {"/directory", new String[]{"null", "\0", "world"}}
+                {"/directory", new String[] {"null", "\0", "world"}}
         };
     }
 

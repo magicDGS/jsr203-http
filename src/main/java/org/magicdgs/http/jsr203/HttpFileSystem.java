@@ -34,7 +34,7 @@ final class HttpFileSystem extends FileSystem {
     /**
      * Construct a new FileSystem.
      *
-     * @param provider non {@code null} provider that generated this HTTP/S File System.
+     * @param provider  non {@code null} provider that generated this HTTP/S File System.
      * @param authority non {@code null} authority for this HTTP/S File System.
      */
     HttpFileSystem(final HttpAbstractFileSystemProvider provider, final String authority) {
@@ -150,7 +150,8 @@ final class HttpFileSystem extends FileSystem {
             return true;
         } else if (other instanceof HttpFileSystem) {
             final HttpFileSystem ofs = (HttpFileSystem) other;
-            return provider() == ofs.provider() && getAuthority().equalsIgnoreCase(ofs.getAuthority());
+            return provider() == ofs.provider() && getAuthority()
+                    .equalsIgnoreCase(ofs.getAuthority());
         }
         return false;
     }
