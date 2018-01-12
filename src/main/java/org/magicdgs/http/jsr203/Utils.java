@@ -16,6 +16,7 @@ public class Utils {
      *
      * @param o   object to test.
      * @param msg message for the exception.
+     * @param <T> type of the object.
      *
      * @return the same object if not {@code null}.
      *
@@ -42,5 +43,4 @@ public class Utils {
             super("Should not happen", e);
         }
     }
-
 }
