@@ -6,8 +6,7 @@ import java.io.IOError;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
-import java.nio.file.FileSystem;
+import java.nio.file.InvalidPathException;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.WatchEvent;
@@ -50,9 +49,6 @@ final class HttpPath implements Path {
     // file system (indicates the scheme - HTTP or HTTPS)
     private final HttpFileSystem fs;
 
-    // authority part for the URL
-    private final String authority;
-
     // path - similar to other implementation of Path
     private final byte[] normalizedPath;
 
@@ -65,18 +61,16 @@ final class HttpPath implements Path {
      * Internal constructor.
      *
      * @param fs             file system. Shouldn't be {@code null}.
-     * @param authority      authority. Shouldn't be {@code null}.
      * @param query          query. May be {@code null}.
      * @param reference      reference. May be {@code null}.
      * @param normalizedPath normalized path (as a byte array). Shouldn't be {@code null}.
      *
      * @implNote does not perform any check for efficiency.
      */
-    private HttpPath(final HttpFileSystem fs, final String authority,
+    private HttpPath(final HttpFileSystem fs,
             final String query, final String reference,
             final byte... normalizedPath) {
         this.fs = fs;
-        this.authority = authority;
 
         // optional query and reference components (may be null)
         this.query = query;
@@ -87,46 +81,20 @@ final class HttpPath implements Path {
     }
 
     /**
-     * URI constructor.
+     * Creates a new Path in the provided {@link HttpFileSystem}, with optional query and reference.
      *
-     * @param uri HTTP/S URI.
-     * @param fs  file system used to create the path.
+     * @param fs file system representing the base URL (scheme and authority).
+     * @param path path component for the URL (required).
+     * @param query query  component for the URL (optional).
+     * @param reference reference component for the URL (optional).
      */
-    HttpPath(final URI uri, final HttpFileSystem fs) {
-        this(checkScheme(fs, uri.getScheme()),
-                Utils.nonNull(uri.getAuthority(), () -> "URI without authority"),
-                uri.getQuery(),
-                uri.getFragment(),
-                getNormalizedPathBytes(uri.getPath()));
-    }
-
-    /**
-     * URL constructor.
-     *
-     * @param url HTTP/S URL.
-     * @param fs  file system used to create the path.
-     */
-    HttpPath(final URL url, final HttpFileSystem fs) {
-        this(checkScheme(fs, url.getProtocol()),
-                Utils.nonNull(url.getAuthority(), () -> "URL without authority"),
-                url.getQuery(),
-                url.getRef(),
-                getNormalizedPathBytes(url.getPath()));
-    }
-
-    // helper method to share between constructors
-    private static HttpFileSystem checkScheme(final HttpFileSystem fs, String scheme) {
-        // second check the scheme
-        if (!fs.provider().getScheme().equalsIgnoreCase(scheme)) {
-            throw new IllegalArgumentException(String.format(
-                    "Protocol '%s' does not fit the FileSystem's provider scheme (%s)",
-                    scheme, fs.provider().getScheme()));
-        }
-        return fs;
+    HttpPath(final HttpFileSystem fs, final String path, final String query, final String reference) {
+        this(Utils.nonNull(fs, () -> "null fs"), query, reference,
+                getNormalizedPathBytes(Utils.nonNull(path, () -> "null path")));
     }
 
     @Override
-    public FileSystem getFileSystem() {
+    public HttpFileSystem getFileSystem() {
         return fs;
     }
 
@@ -138,7 +106,8 @@ final class HttpPath implements Path {
 
     @Override
     public Path getRoot() {
-        throw new UnsupportedOperationException("Not implemented");
+        // root is a Path with only the byte array
+        return new HttpPath(fs, null, null);
     }
 
     @Override
@@ -219,7 +188,8 @@ final class HttpPath implements Path {
     @Override
     public URI toUri() {
         try {
-            return new URI(fs.provider().getScheme(), authority,
+            return new URI(fs.provider().getScheme(),
+                    fs.getAuthority(),
                     new String(normalizedPath, HttpUtils.HTTP_PATH_CHARSET),
                     query, reference);
         } catch (final URISyntaxException e) {
@@ -280,12 +250,12 @@ final class HttpPath implements Path {
 
         final HttpPath httpOther = (HttpPath) other;
         // object comparison - should be from the same provider
-        if (this.fs != httpOther.fs) {
+        if (fs.provider() != httpOther.fs.provider()) {
             throw new ClassCastException();
         }
 
         // first check the authority (case insensitive)
-        int comparison = this.authority.compareToIgnoreCase(httpOther.authority);
+        int comparison = fs.getAuthority().compareToIgnoreCase(httpOther.fs.getAuthority());
         if (comparison != 0) {
             return comparison;
         }
@@ -341,7 +311,6 @@ final class HttpPath implements Path {
     public int hashCode() {
         // TODO - maybe we should cache (https://github.com/magicDGS/jsr203-http/issues/18)
         int h = fs.hashCode();
-        h = 31 * h + authority.toLowerCase().hashCode();
         for (int i = 0; i < normalizedPath.length; i++) {
             h = 31 * h + (normalizedPath[i] & 0xff);
         }
@@ -356,7 +325,7 @@ final class HttpPath implements Path {
         // adding scheme, authority and normalized path
         final StringBuilder sb = new StringBuilder(fs.provider().getScheme()) // scheme
                 .append("://")
-                .append(authority)
+                .append(fs.getAuthority()) // authority
                 .append(new String(normalizedPath, HttpUtils.HTTP_PATH_CHARSET));
         if (query != null) {
             sb.append('?').append(query);
@@ -374,7 +343,7 @@ final class HttpPath implements Path {
     private static byte[] getNormalizedPathBytes(final String path) {
         // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
         if (!path.isEmpty() && !path.startsWith(HttpUtils.HTTP_PATH_SEPARATOR_STRING)) {
-            throw new IllegalArgumentException("Relative HTTP/S path are not supported");
+            throw new InvalidPathException(path, "Relative HTTP/S path are not supported");
         }
 
         if (HttpUtils.HTTP_PATH_SEPARATOR_STRING.equals(path) || path.isEmpty()) {
@@ -388,7 +357,7 @@ final class HttpPath implements Path {
             if (isDoubleSeparator(prevChar, c)) {
                 return getNormalizedPathBytes(path, len, i - 1);
             }
-            prevChar = checkNotNull(c);
+            prevChar = checkNotNull(path, c);
         }
         if (prevChar == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
             return getNormalizedPathBytes(path, len, len - 1);
@@ -420,7 +389,7 @@ final class HttpPath implements Path {
                 if (isDoubleSeparator(prevChar, c)) {
                     continue;
                 }
-                prevChar = checkNotNull(c);
+                prevChar = checkNotNull(path, c);
                 os.write(c);
             }
 
@@ -435,9 +404,9 @@ final class HttpPath implements Path {
                 && prevChar == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
     }
 
-    private static char checkNotNull(char c) {
+    private static char checkNotNull(final String path, char c) {
         if (c == '\u0000') {
-            throw new IllegalArgumentException("Null character not allowed in path");
+            throw new InvalidPathException(path, "Null character not allowed in path");
         }
         return c;
     }

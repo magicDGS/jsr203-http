@@ -1,13 +1,20 @@
 package org.magicdgs.http.jsr203;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.WatchService;
 import java.nio.file.attribute.UserPrincipalLookupService;
 import java.nio.file.spi.FileSystemProvider;
+import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -17,20 +24,22 @@ import java.util.Set;
  */
 final class HttpFileSystem extends FileSystem {
 
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+
     private final HttpAbstractFileSystemProvider provider;
 
-    // TODO - remove this constructor (https://github.com/magicDGS/jsr203-http/issues/17)
-    HttpFileSystem() {
-        this.provider = null;
-    }
+    // authority for this FileSystem
+    private final String authority;
 
     /**
      * Construct a new FileSystem.
      *
-     * @param provider non {@code null} provider that generated this HTTP/S File System.
+     * @param provider  non {@code null} provider that generated this HTTP/S File System.
+     * @param authority non {@code null} authority for this HTTP/S File System.
      */
-    HttpFileSystem(final HttpAbstractFileSystemProvider provider) {
+    HttpFileSystem(final HttpAbstractFileSystemProvider provider, final String authority) {
         this.provider = Utils.nonNull(provider, () -> "null provider");
+        this.authority = Utils.nonNull(authority, () -> "null authority");
     }
 
     @Override
@@ -38,14 +47,25 @@ final class HttpFileSystem extends FileSystem {
         return provider;
     }
 
+    /**
+     * Gets the authority for this File System.
+     *
+     * @return the authority for this File System.
+     */
+    public String getAuthority() {
+        return authority;
+    }
+
     @Override
     public void close() {
-        throw new UnsupportedOperationException("Not implemented");
+        // TODO - this should remove the fs from the list in the provider object (https://github.com/magicDGS/jsr203-http/issues/26)
+        logger.warn("{} is always open (do not close)", this.getClass());
     }
 
     @Override
     public boolean isOpen() {
-        throw new UnsupportedOperationException("Not implemented");
+        // TODO - this should check if the fs is in the list stored in the provider object (https://github.com/magicDGS/jsr203-http/issues/26)
+        return true;
     }
 
     /**
@@ -58,14 +78,20 @@ final class HttpFileSystem extends FileSystem {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @return {@link HttpUtils#HTTP_PATH_SEPARATOR_STRING}.
+     */
     @Override
     public String getSeparator() {
-        throw new UnsupportedOperationException("Not implemented");
+        return HttpUtils.HTTP_PATH_SEPARATOR_STRING;
     }
 
     @Override
     public Iterable<Path> getRootDirectories() {
-        throw new UnsupportedOperationException("Not implemented");
+        // the root directory does not have the slash
+        return Collections.singleton(new HttpPath(this, "", null, null));
     }
 
     @Override
@@ -80,7 +106,21 @@ final class HttpFileSystem extends FileSystem {
 
     @Override
     public Path getPath(final String first, final String... more) {
-        throw new UnsupportedOperationException("Not implemented");
+        final String path = Utils.nonNull(first, () -> "null first")
+                + String.join(getSeparator(), Utils.nonNull(more, () -> "null more"));
+
+        if (!path.isEmpty() && !path.startsWith(getSeparator())) {
+            throw new InvalidPathException(path, "Relative paths are not supported", 0);
+        }
+
+        try {
+            // handle the Path with the URI to separate Path query and fragment
+            // in addition, it checks for errors in the encoding (e.g., null chars)
+            final URI uri = new URI(path);
+            return new HttpPath(this, uri.getPath(), uri.getQuery(), uri.getFragment());
+        } catch (URISyntaxException e) {
+            throw new InvalidPathException(e.getInput(), e.getReason(), e.getIndex());
+        }
     }
 
     @Override
@@ -96,5 +136,27 @@ final class HttpFileSystem extends FileSystem {
     @Override
     public WatchService newWatchService() throws IOException {
         throw new UnsupportedOperationException("Not implemented");
+    }
+
+    @Override
+    public String toString() {
+        return String.format("%s[%s]@%s", this.getClass().getSimpleName(), provider, hashCode());
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        } else if (other instanceof HttpFileSystem) {
+            final HttpFileSystem ofs = (HttpFileSystem) other;
+            return provider() == ofs.provider() && getAuthority()
+                    .equalsIgnoreCase(ofs.getAuthority());
+        }
+        return false;
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * provider.hashCode() + getAuthority().toLowerCase().hashCode();
     }
 }
