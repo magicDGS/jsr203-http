@@ -5,6 +5,8 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.util.Iterator;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -42,6 +44,25 @@ public class HttpFileSystemUnitTest extends BaseTest {
         Assert.assertTrue(fs.isOpen());
     }
 
+    @DataProvider
+    public Object[][] authoritiesToTest() {
+        return new Object[][] {
+                {TEST_AUTHORITY},
+                {"example.org"},
+                {"hello.worl.net"}
+        };
+    }
+
+    @Test(dataProvider = "authoritiesToTest")
+    public void testGetRootDirectory(final String authority) {
+        final HttpFileSystem fs = new HttpFileSystem(TEST_PROVIDER, authority);
+        final Iterator<Path> root = fs.getRootDirectories().iterator();
+        assertEqualsPath(root.next(),
+                // constructing a new FileSystem to test that it generates the same independently
+                // of the instance itself
+                new HttpPath(new HttpFileSystem(TEST_PROVIDER, authority), "/", null, null));
+        Assert.assertFalse(root.hasNext());
+    }
 
     @DataProvider
     public Object[][] validPaths() {
