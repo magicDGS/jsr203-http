@@ -94,7 +94,7 @@ final class HttpPath implements Path {
      */
     HttpPath(final URI uri, final HttpFileSystem fs) {
         this(checkScheme(fs, uri.getScheme()),
-                checkAuthority(uri.getAuthority()),
+                Utils.nonNull(uri.getAuthority(), () -> "URI without authority"),
                 uri.getQuery(),
                 uri.getFragment(),
                 getNormalizedPathBytes(uri.getPath()));
@@ -108,18 +108,10 @@ final class HttpPath implements Path {
      */
     HttpPath(final URL url, final HttpFileSystem fs) {
         this(checkScheme(fs, url.getProtocol()),
-                checkAuthority(url.getAuthority()),
+                Utils.nonNull(url.getAuthority(), () -> "URL without authority"),
                 url.getQuery(),
                 url.getRef(),
                 getNormalizedPathBytes(url.getPath()));
-    }
-
-    // helper method to share between constructors
-    private static String checkAuthority(final String authority) {
-        if (authority == null) {
-            throw new IllegalArgumentException("URL/URI without authority");
-        }
-        return authority;
     }
 
     // helper method to share between constructors
@@ -434,7 +426,7 @@ final class HttpPath implements Path {
 
             return os.toByteArray();
         } catch (final IOException e) {
-            throw new RuntimeException("Should not happen", e);
+            throw new Utils.ShouldNotHappenException(e);
         }
     }
 
