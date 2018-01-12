@@ -59,7 +59,7 @@ final class HttpFileSystem extends FileSystem {
     @Override
     public void close() {
         // TODO - this should remove the fs from the list in the provider object (https://github.com/magicDGS/jsr203-http/issues/26)
-        logger.warn("{} is always open (do not close)", this.getClass());
+        logger.warn("{} is always open (no closed)", this.getClass());
     }
 
     @Override
@@ -105,7 +105,7 @@ final class HttpFileSystem extends FileSystem {
     }
 
     @Override
-    public Path getPath(final String first, final String... more) {
+    public HttpPath getPath(final String first, final String... more) {
         final String path = Utils.nonNull(first, () -> "null first")
                 + String.join(getSeparator(), Utils.nonNull(more, () -> "null more"));
 
@@ -116,11 +116,24 @@ final class HttpFileSystem extends FileSystem {
         try {
             // handle the Path with the URI to separate Path query and fragment
             // in addition, it checks for errors in the encoding (e.g., null chars)
-            final URI uri = new URI(path);
-            return new HttpPath(this, uri.getPath(), uri.getQuery(), uri.getFragment());
+            return getPath(new URI(path));
         } catch (URISyntaxException e) {
             throw new InvalidPathException(e.getInput(), e.getReason(), e.getIndex());
         }
+    }
+
+
+    /**
+     * Gets the {@link HttpPath} from an {@link URI}.
+     *
+     * @param uri location of the HTTP/S resource.
+     *
+     * @return path representation of the {@link URI}.
+     *
+     * @implNote this method allows to pass the query and fragment to the {@link HttpPath}.
+     */
+    HttpPath getPath(final URI uri) {
+        return new HttpPath(this, uri.getPath(), uri.getQuery(), uri.getFragment());
     }
 
     @Override

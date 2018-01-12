@@ -3,8 +3,11 @@ package org.magicdgs.http.jsr203;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.net.HttpURLConnection;
+import java.net.URL;
 import java.net.URLConnection;
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 
 /**
@@ -25,6 +28,9 @@ public final class HttpUtils {
     /** Charset for path component of HTTP/S URL. */
     public static final Charset HTTP_PATH_CHARSET = Charset.forName("UTF-8");
 
+
+    // request 'HEAD' method
+    private static final String HEAD_REQUEST_METHOD = "HEAD";
     // key for 'Range' request
     private static final String RANGE_REQUEST_PROPERTY_KEY = "Range";
     // value for 'Range' request: START + POSITION + SEPARATOR (+ END)
@@ -46,6 +52,29 @@ public final class HttpUtils {
         Utils.nonNull(connection, () -> "null URL connection");
         if (connection instanceof HttpURLConnection) {
             ((HttpURLConnection) connection).disconnect();
+        }
+    }
+
+    /**
+     * Check if an {@link URL} exists.
+     *
+     * <p>An URL exists if the response code returned is {@link HttpURLConnection#HTTP_OK}.
+     *
+     * @param url URL to test for existance.
+     * @return {@code true} if the URL exists; {@code false} otherwise.
+     * @throws IOException if an I/O error occurs.
+     */
+    public static boolean exists(final URL url) throws IOException {
+        Utils.nonNull(url, () -> "null url");
+        final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        try {
+            conn.setRequestMethod(HEAD_REQUEST_METHOD);
+            return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
+        } catch (final UnknownHostException e ) {
+            // UnknownHostException throws if the host does not exists
+            return false;
+        } finally {
+            conn.disconnect();
         }
     }
 
