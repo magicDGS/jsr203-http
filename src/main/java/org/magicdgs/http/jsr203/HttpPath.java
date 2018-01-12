@@ -89,7 +89,8 @@ final class HttpPath implements Path {
      * @param reference reference component for the URL (optional).
      */
     HttpPath(final HttpFileSystem fs, final String path, final String query, final String reference) {
-        this(fs, query, reference, getNormalizedPathBytes(path));
+        this(Utils.nonNull(fs, () -> "null fs"), query, reference,
+                getNormalizedPathBytes(Utils.nonNull(path, () -> "null path")));
     }
 
     @Override
@@ -187,8 +188,8 @@ final class HttpPath implements Path {
     @Override
     public URI toUri() {
         try {
-            return new URI(getFileSystem().provider().getScheme(),
-                    getFileSystem().getAuthority(),
+            return new URI(fs.provider().getScheme(),
+                    fs.getAuthority(),
                     new String(normalizedPath, HttpUtils.HTTP_PATH_CHARSET),
                     query, reference);
         } catch (final URISyntaxException e) {
@@ -249,13 +250,12 @@ final class HttpPath implements Path {
 
         final HttpPath httpOther = (HttpPath) other;
         // object comparison - should be from the same provider
-        if (this.getFileSystem().provider() != httpOther.getFileSystem().provider()) {
+        if (fs.provider() != httpOther.fs.provider()) {
             throw new ClassCastException();
         }
 
         // first check the authority (case insensitive)
-        int comparison = getFileSystem().getAuthority()
-                .compareToIgnoreCase(httpOther.getFileSystem().getAuthority());
+        int comparison = fs.getAuthority().compareToIgnoreCase(httpOther.fs.getAuthority());
         if (comparison != 0) {
             return comparison;
         }
@@ -310,7 +310,7 @@ final class HttpPath implements Path {
     @Override
     public int hashCode() {
         // TODO - maybe we should cache (https://github.com/magicDGS/jsr203-http/issues/18)
-        int h = getFileSystem().hashCode();
+        int h = fs.hashCode();
         for (int i = 0; i < normalizedPath.length; i++) {
             h = 31 * h + (normalizedPath[i] & 0xff);
         }
@@ -323,9 +323,9 @@ final class HttpPath implements Path {
     public String toString() {
         // TODO - maybe we should cache (https://github.com/magicDGS/jsr203-http/issues/18)
         // adding scheme, authority and normalized path
-        final StringBuilder sb = new StringBuilder(getFileSystem().provider().getScheme()) // scheme
+        final StringBuilder sb = new StringBuilder(fs.provider().getScheme()) // scheme
                 .append("://")
-                .append(getFileSystem().getAuthority()) // authority
+                .append(fs.getAuthority()) // authority
                 .append(new String(normalizedPath, HttpUtils.HTTP_PATH_CHARSET));
         if (query != null) {
             sb.append('?').append(query);

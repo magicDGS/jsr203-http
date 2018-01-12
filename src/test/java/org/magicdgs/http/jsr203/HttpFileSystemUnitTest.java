@@ -23,7 +23,7 @@ public class HttpFileSystemUnitTest extends BaseTest {
         };
     }
 
-    @Test(dataProvider = "nullArgs", expectedExceptions = NullPointerException.class)
+    @Test(dataProvider = "nullArgs", expectedExceptions = IllegalArgumentException.class)
     public void testNullArguments(final HttpAbstractFileSystemProvider provider,
             final String authority) {
         new HttpFileSystem(provider, authority);

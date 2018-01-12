@@ -39,10 +39,7 @@ final class HttpFileSystem extends FileSystem {
      */
     HttpFileSystem(final HttpAbstractFileSystemProvider provider, final String authority) {
         this.provider = Utils.nonNull(provider, () -> "null provider");
-        if (authority == null) {
-            throw new NullPointerException("Null authority");
-        }
-        this.authority = authority;
+        this.authority = Utils.nonNull(authority, () -> "null authority");
     }
 
     @Override
@@ -61,12 +58,13 @@ final class HttpFileSystem extends FileSystem {
 
     @Override
     public void close() {
-        // TODO - this could remove the instance from the provider and let the JVM clean up
+        // TODO - this should remove the fs from the list in the provider object (https://github.com/magicDGS/jsr203-http/issues/26)
         logger.warn("{} is always open (do not close)", this.getClass());
     }
 
     @Override
     public boolean isOpen() {
+        // TODO - this should check if the fs is in the list stored in the provider object (https://github.com/magicDGS/jsr203-http/issues/26)
         return true;
     }
 
@@ -108,7 +106,8 @@ final class HttpFileSystem extends FileSystem {
 
     @Override
     public Path getPath(final String first, final String... more) {
-        final String path = first + String.join(getSeparator(), more);
+        final String path = Utils.nonNull(first, () -> "null first")
+                + String.join(getSeparator(), Utils.nonNull(more, () -> "null more"));
 
         if (!path.isEmpty() && !path.startsWith(getSeparator())) {
             throw new InvalidPathException(path, "Relative paths are not supported", 0);
