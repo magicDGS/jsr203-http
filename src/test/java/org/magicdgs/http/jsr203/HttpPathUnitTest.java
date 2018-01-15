@@ -7,6 +7,7 @@ import org.testng.annotations.Test;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -38,6 +39,25 @@ public class HttpPathUnitTest extends BaseTest {
     @Test(dataProvider = "invalidConstructorArgs")
     public void testInvalidConstruction(final String path, final HttpFileSystem fs, Class<Throwable> exception) {
         Assert.assertThrows(exception, () -> new HttpPath(fs, path, null, null));
+    }
+
+    @DataProvider
+    public Object[][] authoritiesToTest() {
+        return new Object[][] {
+                {TEST_AUTHORITY},
+                {"example.org"},
+                {"hello.worl.net"}
+        };
+    }
+
+    @Test(dataProvider = "authoritiesToTest")
+    public void testGetRoot(final String authority) {
+        final HttpFileSystem fs = new HttpFileSystem(TEST_FS_PROVIDER, authority);
+        final HttpPath testPath = new HttpPath(fs, "/example.html", null, null);
+        // should only be one root, this might fail if the FileSystem returns more
+        for (final Path root : fs.getRootDirectories()) {
+            assertEqualsPath(root, testPath.getRoot());
+        }
     }
 
     @DataProvider
