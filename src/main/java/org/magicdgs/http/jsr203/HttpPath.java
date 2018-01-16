@@ -137,22 +137,113 @@ final class HttpPath implements Path {
 
     @Override
     public boolean startsWith(final Path other) {
-        throw new UnsupportedOperationException("Not implemented");
+        // different FileSystems return false
+        if (!this.getFileSystem().equals(other.getFileSystem())) {
+            return false;
+        }
+
+        return startsWith(((HttpPath) other).normalizedPath);
     }
 
     @Override
     public boolean startsWith(final String other) {
-        throw new UnsupportedOperationException("Not implemented");
+        // throw if null
+        Utils.nonNull(other, () -> "null other");
+        // normalize the path and check with the byte method
+        // TODO - this would not work with startsWith("file.txt") because it is a relative Path
+        // TODO - to support that we require relative paths (https://github.com/magicDGS/jsr203-http/issues/12)
+        return startsWith(getNormalizedPathBytes(other));
+    }
+
+    /**
+     * Private method to test startsWith only for the path component.
+     *
+     * <p>The contract for this method is the same as {@link #startsWith(Path)} (Path)}, but only
+     * for the path component.
+     *
+     * @param other the other path component.
+     * @return {@code true} if {@link #normalizedPath} ends with {@code other}; {@code false}
+     * otherwise.
+     */
+    private boolean startsWith(final byte[] other) {
+        // the other can still end in '/', so we should trim
+        final int olen = pathLengthWithoutTrailingSlash(other);
+
+        // the other path component cannot have a larger than this for startWith
+        if (olen > normalizedPath.length) {
+            return false;
+        }
+
+        // check the bytes of the normalized path
+        int i;
+        for (i = 0; i <= olen; i++) {
+            if (normalizedPath[i] != other[i]) {
+                return false;
+            }
+        }
+
+        // finally check the name boundary
+        return i >= this.normalizedPath.length
+                || this.normalizedPath[i] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
     }
 
     @Override
     public boolean endsWith(final Path other) {
-        throw new UnsupportedOperationException("Not implemented");
+        // different FileSystems return false
+        if (!this.getFileSystem().equals(other.getFileSystem())) {
+            return false;
+        }
+
+        // compare the path component
+        return endsWith(((HttpPath) other).normalizedPath);
     }
 
     @Override
     public boolean endsWith(final String other) {
-        throw new UnsupportedOperationException("Not implemented");
+        // throw if null
+        Utils.nonNull(other, () -> "null other");
+        // normalize the path and check with the byte method
+        // TODO - this would not work with endsWith("file.txt") because it is a relative Path
+        // TODO - to support that we require relative paths (https://github.com/magicDGS/jsr203-http/issues/12)
+        return endsWith(getNormalizedPathBytes(other));
+    }
+
+    /**
+     * Private method to test endsWith only for the path component.
+     *
+     * <p>The contract for this method is the same as {@link #endsWith(Path)}, but only for the
+     * path component.
+     *
+     * @param other the other path component.
+     * @return {@code true} if {@link #normalizedPath} ends with {@code other}; {@code false}
+     * otherwise.
+     */
+    private boolean endsWith(final byte[] other) {
+        // get the last index to check
+        int olast = pathLengthWithoutTrailingSlash(other);
+
+        // get the last index to check
+        int last = pathLengthWithoutTrailingSlash(this.normalizedPath);
+
+        // early termination if the length is 0
+        if (olast == -1) {
+            return last == -1;
+        }
+        // early termination if the other is larger
+        if (last < olast) {
+            return false;
+        }
+
+        // iterate over the bytes to check if they are the same
+        for (; olast >= 0; olast--, last--) {
+            if (other[olast] != this.normalizedPath[last]) {
+                return false;
+            }
+        }
+
+        // final check for name boundary
+        return other[olast + 1] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR
+                || last == -1 || this.normalizedPath[last] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
     }
 
     @Override
@@ -409,5 +500,13 @@ final class HttpPath implements Path {
             throw new InvalidPathException(path, "Null character not allowed in path");
         }
         return c;
+    }
+
+    private static int pathLengthWithoutTrailingSlash(final byte[] path) {
+        int len = path.length - 1;
+        if (len > 0 && path[len] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
+            len--;
+        }
+        return len;
     }
 }

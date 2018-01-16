@@ -61,6 +61,78 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @DataProvider
+    public Object[][] startsWithData() {
+        final String dir = "/dir";
+        final String file = "/file.html";
+        return new Object[][] {
+                // force codepaht for longer other
+                {TEST_FS.getPath(file), dir + file, false},
+                // exactly the same for construction
+                {TEST_FS.getPath(dir), dir, true},
+                {TEST_FS.getPath(file), file, true},
+                // only directory
+                {TEST_FS.getPath(dir + file), dir, true},
+                // both directory and file
+                {TEST_FS.getPath(dir + file), dir + file, true},
+                // several directories
+                {TEST_FS.getPath(dir + dir + dir), dir + dir, true},
+                // truncated start
+                {TEST_FS.getPath(file), "/" + file.substring(2), false},
+                // truncated end
+                {TEST_FS.getPath(file), file.substring(0, file.length()-1), false},
+                {TEST_FS.getPath(dir + file), dir + file.substring(0, file.length()-1), false},
+                // tess for directories and trailing /
+                // Path directory without trailing, and other with
+                {TEST_FS.getPath(dir), dir + "/", true},
+                // Path directory with trailing /, and other without
+                {TEST_FS.getPath(dir + "/"), dir, true},
+                // edge-case: root directory
+                {TEST_FS.getPath("/"), "/", true}
+        };
+    }
+
+    @Test(dataProvider = "startsWithData")
+    public void testStartWith(final Path path, final String other, final boolean expected) {
+        Assert.assertEquals(path.startsWith(other), expected);
+    }
+
+    @DataProvider
+    public Object[][] endsWithData() {
+        final String dir = "/dir";
+        final String file = "/file.html";
+        return new Object[][] {
+                // force codepaht for longer other
+                {TEST_FS.getPath(file), dir + file, false},
+                // exactly the same for construction
+                {TEST_FS.getPath(dir), dir, true},
+                {TEST_FS.getPath(file), file, true},
+                {TEST_FS.getPath(dir + file), dir + file, true},
+                // only file
+                {TEST_FS.getPath(dir + file), file, true},
+                // several directories
+                {TEST_FS.getPath(dir + dir + file), dir + file, true},
+                // truncated start
+                {TEST_FS.getPath(file), "/" + file.substring(2), false},
+                // truncated start
+                {TEST_FS.getPath(file), file.substring(0, file.length()-1), false},
+                {TEST_FS.getPath(dir + file), dir + file.substring(0, file.length()-1), false},
+                // tess for directories and trailing /
+                // Path directory without trailing, and other with
+                {TEST_FS.getPath(dir), dir + "/", true},
+                // Path directory with trailing /, and other without
+                {TEST_FS.getPath(dir + "/"), dir, true},
+                // edge-case: root directory
+                {TEST_FS.getPath("/"), "/", true},
+                {TEST_FS.getPath(file), "/", false}
+        };
+    }
+
+    @Test(dataProvider = "endsWithData")
+    public void testEndsWith(final Path path, final String other, final boolean expected) {
+        Assert.assertEquals(path.endsWith(other), expected);
+    }
+
+    @DataProvider
     public Object[][] validUriStrings() {
         return new Object[][] {
                 {"http://example.com"},
