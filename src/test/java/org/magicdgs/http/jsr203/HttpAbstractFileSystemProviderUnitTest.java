@@ -34,7 +34,6 @@ public class HttpAbstractFileSystemProviderUnitTest extends BaseTest {
         // assert that generating a new FileSystem for the same URI throws
         Assert.assertThrows(FileSystemAlreadyExistsException.class,
                 () -> provider.newFileSystem(TEST_BASE_URI, TEST_ENV));
-        // TODO - test closing the FS allows to create a new one (https://github.com/magicDGS/jsr203-http/issues/26)
     }
 
     @Test
@@ -51,7 +50,6 @@ public class HttpAbstractFileSystemProviderUnitTest extends BaseTest {
 
         // test that it returns the same for the URI used
         Assert.assertSame(provider.getFileSystem(TEST_BASE_URI), fs);
-        // TODO - test closing the FS does not allow to retrieve it again (https://github.com/magicDGS/jsr203-http/issues/26)
     }
 
     @DataProvider

@@ -58,10 +58,17 @@ public final class HttpUtils {
     /**
      * Check if an {@link URL} exists.
      *
-     * <p>An URL exists if the response code returned is {@link HttpURLConnection#HTTP_OK}.
+     * <p>An URL exists if:
+     *
+     * <ul>
+     * <li>The response code returned is {@link HttpURLConnection#HTTP_OK}.</li>
+     * <li>The host is known (connection does not throw {@link UnknownHostException}.</li>
+     * </ul>
      *
      * @param url URL to test for existance.
+     *
      * @return {@code true} if the URL exists; {@code false} otherwise.
+     *
      * @throws IOException if an I/O error occurs.
      */
     public static boolean exists(final URL url) throws IOException {
@@ -70,7 +77,8 @@ public final class HttpUtils {
         try {
             conn.setRequestMethod(HEAD_REQUEST_METHOD);
             return conn.getResponseCode() == HttpURLConnection.HTTP_OK;
-        } catch (final UnknownHostException e ) {
+        } catch (final UnknownHostException e) {
+            // TODO - check if other exceptions could mean that the URL does not exists (https://github.com/magicDGS/jsr203-http/issues/32)
             // UnknownHostException throws if the host does not exists
             return false;
         } finally {

@@ -2,6 +2,7 @@ package org.magicdgs.http.jsr203;
 
 import java.io.IOException;
 import java.net.URI;
+import java.net.URL;
 import java.nio.channels.SeekableByteChannel;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.AccessMode;
@@ -99,7 +100,13 @@ abstract class HttpAbstractFileSystemProvider extends FileSystemProvider {
 
         if (options.isEmpty() ||
                 (options.size() == 1 && options.contains(StandardOpenOption.READ))) {
-            // checking also the URI for throw if there is a mismatch with the provider
+            // convert Path to URI and check it to see if there is a mismatch with the provider
+            final URL url = checkUri(path.toUri()).toURL();
+            // throw if the URL does not exists
+            if (!HttpUtils.exists(url)) {
+                throw new NoSuchFileException(url.toString());
+            }
+            // return a URL SeekableByteChannel
             return new URLSeekableByteChannel(checkUri(path.toUri()).toURL());
         }
         throw new UnsupportedOperationException(
