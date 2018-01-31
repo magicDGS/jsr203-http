@@ -110,6 +110,4 @@ public class HttpAbstractFileSystemProviderUnitTest extends BaseTest {
     public void testSetAttributeIsUnsupported() throws Exception {
         TEST_NULL_PROVIDER.setAttribute(null, null, null);
     }
-
-
 }

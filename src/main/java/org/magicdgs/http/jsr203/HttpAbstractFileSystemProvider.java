@@ -97,10 +97,12 @@ abstract class HttpAbstractFileSystemProvider extends FileSystemProvider {
             throws IOException {
         Utils.nonNull(path, () -> "null path");
         Utils.nonNull(options, () -> "null options");
-
+        // the URI is only checked after asserting if the conditions are met, otherwise it will throw
+        // an unsupported operation exception
         if (options.isEmpty() ||
                 (options.size() == 1 && options.contains(StandardOpenOption.READ))) {
             // convert Path to URI and check it to see if there is a mismatch with the provider
+            // afterwards, convert to an URL
             final URL url = checkUri(path.toUri()).toURL();
             // throw if the URL does not exists
             if (!HttpUtils.exists(url)) {

@@ -59,7 +59,7 @@ final class HttpFileSystem extends FileSystem {
     @Override
     public void close() {
         // TODO - this should remove the fs from the list in the provider object (https://github.com/magicDGS/jsr203-http/issues/26)
-        logger.warn("{} is always open (no closed)", this.getClass());
+        logger.warn("{} is always open (do not close)", this.getClass());
     }
 
     @Override
