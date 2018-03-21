@@ -56,15 +56,25 @@ final class HttpFileSystem extends FileSystem {
         return authority;
     }
 
+    /**
+     * This is a no-op, because {@link HttpFileSystem} is always open.
+     *
+     * @implNote because the open connections are not tracked, we cannot close the file system.
+     */
     @Override
     public void close() {
-        // TODO - this should remove the fs from the list in the provider object (https://github.com/magicDGS/jsr203-http/issues/26)
-        logger.warn("{} is always open (do not close)", this.getClass());
+        logger.warn("{} is always open (no closed)", this.getClass());
     }
 
+    /**
+     * {@link HttpFileSystem} is always open.
+     *
+     * @return {@code true}
+     *
+     * @implNote because the open connections are not tracked, we cannot close the file system.
+     */
     @Override
     public boolean isOpen() {
-        // TODO - this should check if the fs is in the list stored in the provider object (https://github.com/magicDGS/jsr203-http/issues/26)
         return true;
     }
 
