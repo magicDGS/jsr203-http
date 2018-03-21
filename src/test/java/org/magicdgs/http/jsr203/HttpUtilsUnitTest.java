@@ -1,9 +1,13 @@
 package org.magicdgs.http.jsr203;
 
 import org.mockito.Mockito;
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 import java.net.URLConnection;
 
 /**
@@ -43,5 +47,26 @@ public class HttpUtilsUnitTest extends BaseTest {
     @Test(expectedExceptions = IllegalArgumentException.class)
     public void testSetRangeRequestNull() {
         HttpUtils.setRangeRequest(null, 10, 100);
+    }
+
+    @Test(dataProvider = "getDocsFilesForTesting", dataProviderClass = GitHubResourcesIntegrationTest.class)
+    public void testExistingUrls(final String fileName) throws IOException {
+        Assert.assertTrue(HttpUtils.exists(getGithubPagesFileUrl(fileName)));
+    }
+
+    @DataProvider
+    public Object[][] nonExistantUrlStrings() {
+        return new Object[][] {
+                // unknown host
+                {"http://www.unknown_host.com"},
+                // non existant resource
+                {"http://www.example.com/non_existant.html"}
+        };
+    }
+
+    @Test(dataProvider = "nonExistantUrlStrings")
+    public void testNonExistingUrl(final String urlString) throws IOException {
+        final URL noExistant = URI.create(urlString).toURL();
+        Assert.assertFalse(HttpUtils.exists(noExistant));
     }
 }
