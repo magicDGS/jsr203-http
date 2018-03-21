@@ -109,11 +109,11 @@ abstract class HttpAbstractFileSystemProvider extends FileSystemProvider {
                 throw new NoSuchFileException(url.toString());
             }
             // return a URL SeekableByteChannel
-            return new URLSeekableByteChannel(checkUri(path.toUri()).toURL());
+            return new URLSeekableByteChannel(url);
         }
         throw new UnsupportedOperationException(
                 String.format("Only %s is supported for %s, but %s options(s) are provided",
-                        StandardOpenOption.WRITE, this, options));
+                        StandardOpenOption.READ, this, options));
     }
 
     @Override

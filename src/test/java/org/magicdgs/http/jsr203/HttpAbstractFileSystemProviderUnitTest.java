@@ -15,7 +15,6 @@ import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.OpenOption;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.ProviderMismatchException;
 import java.nio.file.StandardOpenOption;
 import java.util.Collections;
