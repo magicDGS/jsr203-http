@@ -15,7 +15,8 @@ init:
 # due to Git for Windows, this is most likely set
 # setting it at the init level will test for tests relying
 # on file bytes
-- cmd: git config core.autocrlf true
+# using global for AppVeyor
+- cmd: git config --global core.autocrlf true
 
 # assemble the library
 build_script:
