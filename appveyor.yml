@@ -1,0 +1,27 @@
+version: '{branch}.{build}'
+
+pull_requests:
+  do_not_increment_build_number: true
+
+# Only on top of the master branch
+branches:
+  only:
+  - master
+
+environment:
+  GRADLE_OPTS: '"-Dorg.gradle.daemon=false"'
+
+# assemble the library
+build_script:
+- cmd: .\gradlew.bat assemble
+
+# run the tests
+test_script:
+- cmd: .\gradlew.bat test
+
+# add a notification about the runs to GiHub
+notifications:
+- provider: GitHubPullRequest
+  on_build_success: true
+  on_build_failure: true
+  on_build_status_changed: true
