@@ -241,6 +241,9 @@ final class HttpPath implements Path {
             }
         }
 
+        // TODO: this codepath is not exercised at all because we always have
+        // TODO: absolute paths, and thus the first statement is always true
+        // TODO: this will change in the future
         // final check for name boundary
         return other[olast + 1] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR
                 || last == -1 || this.normalizedPath[last] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
