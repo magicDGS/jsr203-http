@@ -11,6 +11,13 @@ branches:
 environment:
   GRADLE_OPTS: '"-Dorg.gradle.daemon=false"'
 
+init:
+# due to Git for Windows, this is most likely set
+# setting it at the init level will test for tests relying
+# on file bytes
+# using global for AppVeyor
+- cmd: git config --global core.autocrlf true
+
 # assemble the library
 build_script:
 - cmd: .\gradlew.bat assemble
