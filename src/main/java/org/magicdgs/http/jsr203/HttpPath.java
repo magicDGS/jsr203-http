@@ -51,6 +51,8 @@ final class HttpPath implements Path {
 
     // path - similar to other implementation of Path
     private final byte[] normalizedPath;
+    // offsets for the separator (computed if needed)
+    private volatile int[] offsets;
 
     // query for the URL (may be null)
     private final String query;
@@ -122,7 +124,8 @@ final class HttpPath implements Path {
 
     @Override
     public int getNameCount() {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        return offsets.length;
     }
 
     @Override
@@ -336,6 +339,41 @@ final class HttpPath implements Path {
         return sb.toString();
     }
 
+
+    // create offset list if not already created
+    // should be called after normalize
+    private void initOffsets() {
+        if (offsets == null) {
+            // count names
+            int count = 0;
+            int index = 0;
+            while (index < normalizedPath.length) {
+                final byte c = normalizedPath[index++];
+                if (c == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
+                    count++;
+                    index++;
+                }
+            }
+            // populate offsets
+            final int[] result = new int[count];
+            count = 0;
+            index = 0;
+            while (index < normalizedPath.length) {
+                final byte c = normalizedPath[index];
+                if (c == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
+                    result[count++] = index++;
+                    index++;
+                } else {
+                    // assumes that redundant separators are already removed
+                    index++;
+                }
+            }
+            synchronized (this) {
+                if (offsets == null)
+                    offsets = result;
+            }
+        }
+    }
 
     /////////////////////////////////////////
     // helper methods for path as byte[]

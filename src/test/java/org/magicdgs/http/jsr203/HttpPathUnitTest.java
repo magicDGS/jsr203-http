@@ -61,6 +61,23 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @DataProvider
+    public Object[][] nameCounts() {
+        return new Object[][]{
+                {"http://example.com", 0},
+                {"http://example.com/index.html", 1},
+                {"http://example.com/dir1/index.html", 2},
+                {"http://example.com/dir1/dir2/index.html", 3},
+        };
+    }
+
+    @Test(dataProvider = "nameCounts")
+    public void testGatNameCount(final String uriString, final int count) throws MalformedURLException {
+        final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
+        Assert.assertEquals(path.getNameCount(), count);
+        // TODO: assert that the iterator have the same number of counts and that getName(i) does not fail
+    }
+
+    @DataProvider
     public Object[][] validUriStrings() {
         return new Object[][] {
                 {"http://example.com"},
