@@ -173,6 +173,38 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @DataProvider
+    public Object[][] nameCounts() {
+        return new Object[][]{
+                // contract says that root returns 0 counts
+                {"http://" + TEST_AUTHORITY, 0},
+                {"http://" + TEST_AUTHORITY + "/", 0},
+                // files (never trailing slash)
+                {"http://" + TEST_AUTHORITY + "/index.html", 1},
+                {"http://" + TEST_AUTHORITY + "/dir1/index.html", 2},
+                {"http://"  + TEST_AUTHORITY + "/dir1/dir2/index.html", 3},
+                // directories (with and without trailing slash)
+                {"https://" + TEST_AUTHORITY + "/dir", 1},
+                {"https://" + TEST_AUTHORITY + "/dir/", 1},
+                {"https://" + TEST_AUTHORITY + "/dir1/dir2", 2},
+                {"https://" + TEST_AUTHORITY + "/dir1/dir2/", 2},
+        };
+    }
+
+    @Test(dataProvider = "nameCounts")
+    public void testGatNameCount(final String uriString, final int count) throws MalformedURLException {
+        final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
+        Assert.assertEquals(path.getNameCount(), count);
+//        // check that the iterator returns the same number of elements
+//        // TODO: failing until the iterator is implemented ()
+//        Assert.assertEquals(StreamSupport.stream(path.spliterator(), false).count(), count);
+//        // TODO: failing until the iterator is implemented ()
+//        // check that getName(i) does not fail
+//        for (int i = 0; i < path.getNameCount(); i++) {
+//            Assert.assertNotNull(path.getName(i));
+//        }
+    }
+
+    @DataProvider
     public Object[][] validUriStrings() {
         return new Object[][] {
                 {"http://example.com"},
