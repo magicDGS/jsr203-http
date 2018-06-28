@@ -57,6 +57,7 @@ public class HttpPathUnitTest extends BaseTest {
         // should only be one root, this might fail if the FileSystem returns more
         for (final Path root : fs.getRootDirectories()) {
             assertEqualsPath(root, testPath.getRoot());
+            Assert.assertTrue(testPath.getRoot().isAbsolute());
         }
     }
 
@@ -64,9 +65,9 @@ public class HttpPathUnitTest extends BaseTest {
     public Object[][] nameCounts() {
         return new Object[][]{
                 {"http://example.com", 0},
-                {"http://example.com/index.html", 1},
-                {"http://example.com/dir1/index.html", 2},
-                {"http://example.com/dir1/dir2/index.html", 3},
+                {"http://example.com/first.html", 1},
+                {"http://example.com/first/second.html", 2},
+                {"http://example.com/first/second/third.html", 3},
         };
     }
 
@@ -74,6 +75,10 @@ public class HttpPathUnitTest extends BaseTest {
     public void testGatNameCount(final String uriString, final int count) throws MalformedURLException {
         final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
         Assert.assertEquals(path.getNameCount(), count);
+        for (int i = 0; i < count; i++) {
+            // this is testing that it does not fail, but not the method itself
+            path.getName(i);
+        }
         // TODO: assert that the iterator have the same number of counts and that getName(i) does not fail
     }
 

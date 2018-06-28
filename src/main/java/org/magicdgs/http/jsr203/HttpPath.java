@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Objects;
@@ -102,8 +103,9 @@ final class HttpPath implements Path {
 
     @Override
     public boolean isAbsolute() {
-        // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
-        return true;
+        // if the normalized path has 0-length, it is the root and thus is absolute
+        // otherwise, the normalized path first index should be '/'
+        return normalizedPath.length == 0 || normalizedPath[0] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
     }
 
     @Override
@@ -114,12 +116,14 @@ final class HttpPath implements Path {
 
     @Override
     public Path getFileName() {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        return subpath(offsets.length - 2, offsets.length - 1);
     }
 
     @Override
     public Path getParent() {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        return subpath(0, offsets.length - 1);
     }
 
     @Override
@@ -130,12 +134,30 @@ final class HttpPath implements Path {
 
     @Override
     public Path getName(final int index) {
-        throw new UnsupportedOperationException("Not implemented");
+        return subpath(index, index + 1);
     }
 
     @Override
     public Path subpath(final int beginIndex, final int endIndex) {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        // following the contract for invalid indexes
+        if (beginIndex < 0 || beginIndex >= offsets.length ||
+                endIndex <= beginIndex || endIndex > offsets.length) {
+            throw new IllegalArgumentException(String
+                    .format("Invalid indexes for path with %s name(s): [%s, %s]",
+                            getNameCount(), beginIndex, endIndex));
+        }
+
+        // get the coordinates to copy the path array
+        final int begin = offsets[beginIndex];
+        final int end = (endIndex == offsets.length) ? normalizedPath.length : offsets[endIndex];
+
+        // construct the result
+        final byte[] newPath = Arrays.copyOfRange(normalizedPath, begin, end);
+
+        // return the new path
+        // TODO: should the query/reference be propagated?
+        return new HttpPath(this.fs, null, null, newPath);
     }
 
     @Override
@@ -380,6 +402,7 @@ final class HttpPath implements Path {
 
     private static byte[] getNormalizedPathBytes(final String path) {
         // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
+        // TODO: maybe this should be only on construction!!
         if (!path.isEmpty() && !path.startsWith(HttpUtils.HTTP_PATH_SEPARATOR_STRING)) {
             throw new InvalidPathException(path, "Relative HTTP/S path are not supported");
         }
