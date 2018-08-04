@@ -150,8 +150,6 @@ final class HttpPath implements Path {
         // throw if null
         Utils.nonNull(other, () -> "null other");
         // normalize the path and check with the byte method
-        // TODO - this would not work with startsWith("file.txt") because it is a relative Path
-        // TODO - to support that we require relative paths (https://github.com/magicDGS/jsr203-http/issues/12)
         return startsWith(getNormalizedPathBytes(other));
     }
 
@@ -167,7 +165,7 @@ final class HttpPath implements Path {
      */
     private boolean startsWith(final byte[] other) {
         // the other can still end in '/', so we should trim
-        final int olen = pathLengthWithoutTrailingSlash(other);
+        final int olen = getLastIndexWithoutTrailingSlash(other);
 
         // the other path component cannot have a larger than this for startWith
         if (olen > normalizedPath.length) {
@@ -203,8 +201,6 @@ final class HttpPath implements Path {
         // throw if null
         Utils.nonNull(other, () -> "null other");
         // normalize the path and check with the byte method
-        // TODO - this would not work with endsWith("file.txt") because it is a relative Path
-        // TODO - to support that we require relative paths (https://github.com/magicDGS/jsr203-http/issues/12)
         return endsWith(getNormalizedPathBytes(other));
     }
 
@@ -220,12 +216,11 @@ final class HttpPath implements Path {
      */
     private boolean endsWith(final byte[] other) {
         // get the last index to check
-        int olast = pathLengthWithoutTrailingSlash(other);
-
+        int olast = getLastIndexWithoutTrailingSlash(other);
         // get the last index to check
-        int last = pathLengthWithoutTrailingSlash(this.normalizedPath);
+        int last = getLastIndexWithoutTrailingSlash(this.normalizedPath);
 
-        // early termination if the length is 0
+        // early termination if the length is 0 (last index = -1)
         if (olast == -1) {
             return last == -1;
         }
@@ -243,7 +238,7 @@ final class HttpPath implements Path {
 
         // TODO: this codepath is not exercised at all because we always have
         // TODO: absolute paths, and thus the first statement is always true
-        // TODO: this will change in the future
+        // TODO: this will change in the future (https://github.com/magicDGS/jsr203-http/issues/12)
         // final check for name boundary
         return other[olast + 1] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR
                 || last == -1 || this.normalizedPath[last] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
@@ -505,7 +500,16 @@ final class HttpPath implements Path {
         return c;
     }
 
-    private static int pathLengthWithoutTrailingSlash(final byte[] path) {
+    /**
+     * Gets the last index to consider in the path bytes.
+     *
+     * <p>If the lst index is a trailing slash {@link HttpUtils#HTTP_PATH_SEPARATOR_CHAR}, it
+     * should not be considered for some operations. This method takes into account that problem.
+     *
+     * @param path bytes representing the path.
+     * @return last index of path to consider.
+     */
+    private static int getLastIndexWithoutTrailingSlash(final byte[] path) {
         int len = path.length - 1;
         if (len > 0 && path[len] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
             len--;

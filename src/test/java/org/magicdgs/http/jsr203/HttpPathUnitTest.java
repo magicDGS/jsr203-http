@@ -124,7 +124,7 @@ public class HttpPathUnitTest extends BaseTest {
                 // edge-case: root directory
                 {TEST_FS.getPath("/"), "/", true},
                 {TEST_FS.getPath(file), "/", false}
-                // TODO: this should change in the future -currently it fails
+                // TODO - this test correspond to relative paths (https://github.com/magicDGS/jsr203-http/issues/12)
                 // {TEST_FS.getPath(file), file.substring(1), true}
         };
     }
