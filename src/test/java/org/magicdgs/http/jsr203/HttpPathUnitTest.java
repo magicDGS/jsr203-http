@@ -4,6 +4,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.file.InvalidPathException;
@@ -92,8 +93,27 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "startsWithData")
-    public void testStartWith(final Path path, final String other, final boolean expected) {
+    public void testStartsWith(final Path path, final String other, final boolean expected) {
         Assert.assertEquals(path.startsWith(other), expected);
+    }
+
+
+    @Test(dataProvider = "startsWithData")
+    public void testStartsWithPath(final Path path, final String other, final boolean expected) {
+        final Path otherPath = TEST_FS.getPath(other);
+        Assert.assertEquals(path.startsWith(otherPath), expected);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testStartsWithNullPath() {
+        TEST_FS.getPath("/file.txt").startsWith((Path) null);
+    }
+
+    @Test
+    public void testStartsWithDifferentProvider() {
+        final Path httpPath = TEST_FS.getPath("/file.txt");
+        final Path localPath = new File("/file.txt").toPath();
+        Assert.assertFalse(httpPath.startsWith(localPath));
     }
 
     @DataProvider
@@ -132,6 +152,24 @@ public class HttpPathUnitTest extends BaseTest {
     @Test(dataProvider = "endsWithData")
     public void testEndsWith(final Path path, final String other, final boolean expected) {
         Assert.assertEquals(path.endsWith(other), expected);
+    }
+
+    @Test(dataProvider = "endsWithData")
+    public void testEndsWithPath(final Path path, final String other, final boolean expected) {
+        final Path otherPath = TEST_FS.getPath(other);
+        Assert.assertEquals(path.endsWith(otherPath), expected);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testEndsWithNullPath() {
+        TEST_FS.getPath("/file.txt").endsWith((Path) null);
+    }
+
+    @Test
+    public void testEndsWithDifferentProvider() {
+        final Path httpPath = TEST_FS.getPath("/file.txt");
+        final Path localPath = new File("/file.txt").toPath();
+        Assert.assertFalse(httpPath.endsWith(localPath));
     }
 
     @DataProvider

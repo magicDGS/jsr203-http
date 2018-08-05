@@ -138,7 +138,7 @@ final class HttpPath implements Path {
     @Override
     public boolean startsWith(final Path other) {
         // different FileSystems return false
-        if (!this.getFileSystem().equals(other.getFileSystem())) {
+        if (!this.getFileSystem().equals(Utils.nonNull(other, () -> "null path").getFileSystem())) {
             return false;
         }
 
@@ -188,7 +188,7 @@ final class HttpPath implements Path {
     @Override
     public boolean endsWith(final Path other) {
         // different FileSystems return false
-        if (!this.getFileSystem().equals(other.getFileSystem())) {
+        if (!this.getFileSystem().equals(Utils.nonNull(other, () -> "null path").getFileSystem())) {
             return false;
         }
 
