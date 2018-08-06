@@ -4,6 +4,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.file.InvalidPathException;
@@ -58,6 +59,117 @@ public class HttpPathUnitTest extends BaseTest {
         for (final Path root : fs.getRootDirectories()) {
             assertEqualsPath(root, testPath.getRoot());
         }
+    }
+
+    @DataProvider
+    public Object[][] startsWithData() {
+        final String dir = "/dir";
+        final String file = "/file.html";
+        return new Object[][] {
+                // force codepaht for longer other
+                {TEST_FS.getPath(file), dir + file, false},
+                // exactly the same for construction
+                {TEST_FS.getPath(dir), dir, true},
+                {TEST_FS.getPath(file), file, true},
+                // only directory
+                {TEST_FS.getPath(dir + file), dir, true},
+                // both directory and file
+                {TEST_FS.getPath(dir + file), dir + file, true},
+                // several directories
+                {TEST_FS.getPath(dir + dir + dir), dir + dir, true},
+                // truncated start
+                {TEST_FS.getPath(file), "/" + file.substring(2), false},
+                // truncated end
+                {TEST_FS.getPath(file), file.substring(0, file.length()-1), false},
+                {TEST_FS.getPath(dir + file), dir + file.substring(0, file.length()-1), false},
+                // tess for directories and trailing /
+                // Path directory without trailing, and other with
+                {TEST_FS.getPath(dir), dir + "/", true},
+                // Path directory with trailing /, and other without
+                {TEST_FS.getPath(dir + "/"), dir, true},
+                // edge-case: root directory
+                {TEST_FS.getPath("/"), "/", true}
+        };
+    }
+
+    @Test(dataProvider = "startsWithData")
+    public void testStartsWith(final Path path, final String other, final boolean expected) {
+        Assert.assertEquals(path.startsWith(other), expected);
+    }
+
+
+    @Test(dataProvider = "startsWithData")
+    public void testStartsWithPath(final Path path, final String other, final boolean expected) {
+        final Path otherPath = TEST_FS.getPath(other);
+        Assert.assertEquals(path.startsWith(otherPath), expected);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testStartsWithNullPath() {
+        TEST_FS.getPath("/file.txt").startsWith((Path) null);
+    }
+
+    @Test
+    public void testStartsWithDifferentProvider() {
+        final Path httpPath = TEST_FS.getPath("/file.txt");
+        final Path localPath = new File("/file.txt").toPath();
+        Assert.assertFalse(httpPath.startsWith(localPath));
+    }
+
+    @DataProvider
+    public Object[][] endsWithData() {
+        final String dir = "/dir";
+        final String file = "/file.html";
+        return new Object[][] {
+                // force codepaht for longer other
+                {TEST_FS.getPath(file), dir + file, false},
+                // exactly the same for construction
+                {TEST_FS.getPath(dir), dir, true},
+                {TEST_FS.getPath(file), file, true},
+                {TEST_FS.getPath(dir + file), dir + file, true},
+                // only file
+                {TEST_FS.getPath(dir + file), file, true},
+                // several directories
+                {TEST_FS.getPath(dir + dir + file), dir + file, true},
+                // truncated start
+                {TEST_FS.getPath(file), "/" + file.substring(2), false},
+                // truncated start
+                {TEST_FS.getPath(file), file.substring(0, file.length()-1), false},
+                {TEST_FS.getPath(dir + file), dir + file.substring(0, file.length()-1), false},
+                // tess for directories and trailing /
+                // Path directory without trailing, and other with
+                {TEST_FS.getPath(dir), dir + "/", true},
+                // Path directory with trailing /, and other without
+                {TEST_FS.getPath(dir + "/"), dir, true},
+                // edge-case: root directory
+                {TEST_FS.getPath("/"), "/", true},
+                {TEST_FS.getPath(file), "/", false}
+                // TODO - this test correspond to relative paths (https://github.com/magicDGS/jsr203-http/issues/12)
+                // {TEST_FS.getPath(file), file.substring(1), true}
+        };
+    }
+
+    @Test(dataProvider = "endsWithData")
+    public void testEndsWith(final Path path, final String other, final boolean expected) {
+        Assert.assertEquals(path.endsWith(other), expected);
+    }
+
+    @Test(dataProvider = "endsWithData")
+    public void testEndsWithPath(final Path path, final String other, final boolean expected) {
+        final Path otherPath = TEST_FS.getPath(other);
+        Assert.assertEquals(path.endsWith(otherPath), expected);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testEndsWithNullPath() {
+        TEST_FS.getPath("/file.txt").endsWith((Path) null);
+    }
+
+    @Test
+    public void testEndsWithDifferentProvider() {
+        final Path httpPath = TEST_FS.getPath("/file.txt");
+        final Path localPath = new File("/file.txt").toPath();
+        Assert.assertFalse(httpPath.endsWith(localPath));
     }
 
     @DataProvider
