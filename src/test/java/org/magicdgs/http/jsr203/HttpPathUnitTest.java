@@ -191,7 +191,7 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "nameCounts")
-    public void testGatNameCount(final String uriString, final int count) throws MalformedURLException {
+    public void testGetNameCount(final String uriString, final int count) throws MalformedURLException {
         final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
         Assert.assertEquals(path.getNameCount(), count);
 //        // check that the iterator returns the same number of elements

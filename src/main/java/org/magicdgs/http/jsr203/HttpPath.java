@@ -428,40 +428,42 @@ final class HttpPath implements Path {
         return sb.toString();
     }
 
-
-    // create offset list if not already created
-    // should be called after normalize
+    /**
+     * Creates the array of offsets if not already created.
+     *
+     * @implNote it assumes that redundant separators are already removed.
+     */
     private void initOffsets() {
         if (offsets == null) {
             // get the length without the trailing slash
             final int length = getLastIndexWithoutTrailingSlash(normalizedPath);
             // count names
             int count = 0;
+            // index position (outside loop to re-use in the next loop)
             int index = 0;
-            while (index < length) {
-                final byte c = normalizedPath[index++];
+            for (; index < length; index++) {
+                final byte c = normalizedPath[index];
                 if (c == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
                     count++;
+                    // assumes that redundant separators are already removed
                     index++;
                 }
             }
             // populate offsets
             final int[] result = new int[count];
             count = 0;
-            index = 0;
-            while (index < length) {
+            for (index = 0; index < length; index++) {
                 final byte c = normalizedPath[index];
                 if (c == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
-                    result[count++] = index++;
-                    index++;
-                } else {
                     // assumes that redundant separators are already removed
-                    index++;
+                    result[count++] = index++;
                 }
             }
+            // update in a thread-safe manner
             synchronized (this) {
-                if (offsets == null)
+                if (offsets == null) {
                     offsets = result;
+                }
             }
         }
     }
@@ -547,6 +549,7 @@ final class HttpPath implements Path {
      * should not be considered for some operations. This method takes into account that problem.
      *
      * @param path bytes representing the path.
+     *
      * @return last index of path to consider.
      */
     private static int getLastIndexWithoutTrailingSlash(final byte[] path) {
