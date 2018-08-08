@@ -133,6 +133,12 @@ public class HttpPathUnitTest extends BaseTest {
                 {TEST_FS.getPath(dir + dir + file), dir + file, true},
                 // truncated start
                 {TEST_FS.getPath(file), "/" + file.substring(2), false},
+                {TEST_FS.getPath(dir + file), dir + "/" + file.substring(2), false},
+                // not bounded
+                {TEST_FS.getPath(file), file.replaceFirst("/", "/a"), false},
+                {TEST_FS.getPath(dir + file), file.replaceFirst("/", "/a"), false},
+                // truncated start
+                {TEST_FS.getPath(file), "/" + file.substring(2), false},
                 // truncated start
                 {TEST_FS.getPath(file), file.substring(0, file.length()-1), false},
                 {TEST_FS.getPath(dir + file), dir + file.substring(0, file.length()-1), false},

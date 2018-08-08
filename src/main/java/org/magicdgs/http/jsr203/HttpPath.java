@@ -196,6 +196,7 @@ final class HttpPath implements Path {
         }
 
         // compare the path component
+        // TODO: maybe we should use isAbsolute() after https://github.com/magicDGS/jsr203-http/issues/12
         return endsWith(((HttpPath) other).normalizedPath, true);
     }
 
@@ -240,9 +241,20 @@ final class HttpPath implements Path {
             }
         }
 
-        // final check for name boundary
-        return last == -1 || this.normalizedPath[last] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR ||
-                other[olast + 1] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR && (pathVersion || olast == last);
+        // last == -1 when olast == -1 (the same length and equals)
+        if (last == -1) {
+            return true;
+        }
+
+        // switch for the path version or not path version
+        if (pathVersion) {
+            // at this point, the pathVersion should always return true (as it is bounded)
+            // TODO: this might change after relative path support (https://github.com/magicDGS/jsr203-http/issues/12)
+            return true;
+        } else {
+            // otherwise, it shouldn't be included (e.g., "/foo/bar" ends with "bar" but not "/bar"
+            return this.normalizedPath[last] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
+        }
     }
 
     @Override
