@@ -51,6 +51,8 @@ final class HttpPath implements Path {
 
     // path - similar to other implementation of Path
     private final byte[] normalizedPath;
+    // offsets for the separator (computed if needed)
+    private volatile int[] offsets;
 
     // query for the URL (may be null)
     private final String query;
@@ -122,7 +124,8 @@ final class HttpPath implements Path {
 
     @Override
     public int getNameCount() {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        return offsets.length;
     }
 
     @Override
@@ -425,6 +428,45 @@ final class HttpPath implements Path {
         return sb.toString();
     }
 
+    /**
+     * Creates the array of offsets if not already created.
+     *
+     * @implNote it assumes that redundant separators are already removed.
+     */
+    private void initOffsets() {
+        if (offsets == null) {
+            // get the length without the trailing slash
+            final int length = getLastIndexWithoutTrailingSlash(normalizedPath);
+            // count names
+            int count = 0;
+            // index position (outside loop to re-use in the next loop)
+            int index = 0;
+            for (; index < length; index++) {
+                final byte c = normalizedPath[index];
+                if (c == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
+                    count++;
+                    // assumes that redundant separators are already removed
+                    index++;
+                }
+            }
+            // populate offsets
+            final int[] result = new int[count];
+            count = 0;
+            for (index = 0; index < length; index++) {
+                final byte c = normalizedPath[index];
+                if (c == HttpUtils.HTTP_PATH_SEPARATOR_CHAR) {
+                    // assumes that redundant separators are already removed
+                    result[count++] = index++;
+                }
+            }
+            // update in a thread-safe manner
+            synchronized (this) {
+                if (offsets == null) {
+                    offsets = result;
+                }
+            }
+        }
+    }
 
     /////////////////////////////////////////
     // helper methods for path as byte[]
@@ -507,6 +549,7 @@ final class HttpPath implements Path {
      * should not be considered for some operations. This method takes into account that problem.
      *
      * @param path bytes representing the path.
+     *
      * @return last index of path to consider.
      */
     private static int getLastIndexWithoutTrailingSlash(final byte[] path) {
