@@ -166,8 +166,6 @@ public class HttpPathUnitTest extends BaseTest {
         Assert.assertFalse(path.endsWith("/bar"));
         // but if I understood correctly, if it endsWith("/foo/bar") should return true
         Assert.assertTrue(path.endsWith("/foo/bar"));
-        // TODO: should the next statement also return true?
-        // TODO: Assert.assertTrue(path.endsWith(path.toString()));
     }
 
     @Test(dataProvider = "endsWithData")
