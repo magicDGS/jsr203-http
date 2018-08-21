@@ -92,7 +92,7 @@ final class HttpPath implements Path {
      */
     HttpPath(final HttpFileSystem fs, final String path, final String query, final String reference) {
         this(Utils.nonNull(fs, () -> "null fs"), query, reference,
-                getNormalizedPathBytes(Utils.nonNull(path, () -> "null path")));
+                getNormalizedPathBytes(Utils.nonNull(path, () -> "null path"), true));
     }
 
     @Override
@@ -153,7 +153,7 @@ final class HttpPath implements Path {
         // throw if null
         Utils.nonNull(other, () -> "null other");
         // normalize the path and check with the byte method
-        return startsWith(getNormalizedPathBytes(other));
+        return startsWith(getNormalizedPathBytes(other, false));
     }
 
     /**
@@ -196,7 +196,8 @@ final class HttpPath implements Path {
         }
 
         // compare the path component
-        return endsWith(((HttpPath) other).normalizedPath);
+        // TODO: maybe we should use isAbsolute() after https://github.com/magicDGS/jsr203-http/issues/12
+        return endsWith(((HttpPath) other).normalizedPath, true);
     }
 
     @Override
@@ -204,7 +205,7 @@ final class HttpPath implements Path {
         // throw if null
         Utils.nonNull(other, () -> "null other");
         // normalize the path and check with the byte method
-        return endsWith(getNormalizedPathBytes(other));
+        return endsWith(getNormalizedPathBytes(other, false), false);
     }
 
     /**
@@ -214,10 +215,11 @@ final class HttpPath implements Path {
      * path component.
      *
      * @param other the other path component.
+     * @param pathVersion if {@code false}, perform an extra check for the String version.
      * @return {@code true} if {@link #normalizedPath} ends with {@code other}; {@code false}
      * otherwise.
      */
-    private boolean endsWith(final byte[] other) {
+    private boolean endsWith(final byte[] other, final boolean pathVersion) {
         // get the last index to check
         int olast = getLastIndexWithoutTrailingSlash(other);
         // get the last index to check
@@ -239,12 +241,20 @@ final class HttpPath implements Path {
             }
         }
 
-        // TODO: this codepath is not exercised at all because we always have
-        // TODO: absolute paths, and thus the first statement is always true
-        // TODO: this will change in the future (https://github.com/magicDGS/jsr203-http/issues/12)
-        // final check for name boundary
-        return other[olast + 1] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR
-                || last == -1 || this.normalizedPath[last] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
+        // last == -1 when olast == -1 (the same length and equals)
+        if (last == -1) {
+            return true;
+        }
+
+        // switch for the path version or not path version
+        if (pathVersion) {
+            // at this point, the pathVersion should always return true (as it is bounded)
+            // TODO: this might change after relative path support (https://github.com/magicDGS/jsr203-http/issues/12)
+            return true;
+        } else {
+            // otherwise, it shouldn't be included (e.g., "/foo/bar" ends with "bar" but not "/bar"
+            return this.normalizedPath[last] == HttpUtils.HTTP_PATH_SEPARATOR_CHAR;
+        }
     }
 
     @Override
@@ -468,12 +478,17 @@ final class HttpPath implements Path {
         }
     }
 
-    /////////////////////////////////////////
-    // helper methods for path as byte[]
-
-    private static byte[] getNormalizedPathBytes(final String path) {
+    /**
+     * Gets the path as a normalized (without multiple slashes) array of bytes.
+     *
+     * @param path          path to convert into byte[]
+     * @param checkRelative if {@code true}, check if the path is absolute.
+     *
+     * @return array of bytes, without multiple slashes together.
+     */
+    private static byte[] getNormalizedPathBytes(final String path, final boolean checkRelative) {
         // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
-        if (!path.isEmpty() && !path.startsWith(HttpUtils.HTTP_PATH_SEPARATOR_STRING)) {
+        if (checkRelative && !path.isEmpty() && !path.startsWith(HttpUtils.HTTP_PATH_SEPARATOR_STRING)) {
             throw new InvalidPathException(path, "Relative HTTP/S path are not supported");
         }
 

@@ -133,6 +133,12 @@ public class HttpPathUnitTest extends BaseTest {
                 {TEST_FS.getPath(dir + dir + file), dir + file, true},
                 // truncated start
                 {TEST_FS.getPath(file), "/" + file.substring(2), false},
+                {TEST_FS.getPath(dir + file), dir + "/" + file.substring(2), false},
+                // not bounded
+                {TEST_FS.getPath(file), file.replaceFirst("/", "/a"), false},
+                {TEST_FS.getPath(dir + file), file.replaceFirst("/", "/a"), false},
+                // truncated start
+                {TEST_FS.getPath(file), "/" + file.substring(2), false},
                 // truncated start
                 {TEST_FS.getPath(file), file.substring(0, file.length()-1), false},
                 {TEST_FS.getPath(dir + file), dir + file.substring(0, file.length()-1), false},
@@ -142,16 +148,24 @@ public class HttpPathUnitTest extends BaseTest {
                 // Path directory with trailing /, and other without
                 {TEST_FS.getPath(dir + "/"), dir, true},
                 // edge-case: root directory
+                {TEST_FS.getPath("/"), "", true},
                 {TEST_FS.getPath("/"), "/", true},
                 {TEST_FS.getPath(file), "/", false}
-                // TODO - this test correspond to relative paths (https://github.com/magicDGS/jsr203-http/issues/12)
-                // {TEST_FS.getPath(file), file.substring(1), true}
         };
     }
 
     @Test(dataProvider = "endsWithData")
-    public void testEndsWith(final Path path, final String other, final boolean expected) {
-        Assert.assertEquals(path.endsWith(other), expected);
+    public void testEndsWith(final Path path, final String otherWithRootComponent, final boolean expected) {
+        Assert.assertEquals(path.endsWith(otherWithRootComponent.replaceFirst("/", "")), expected);
+    }
+
+    @Test
+    public void testEndsWithStringAbsolutePath() {
+        final Path path = TEST_FS.getPath("/foo/bar");
+        // following the contract, "http://example.com/foo/bar".endsWith("/bar") should return false
+        Assert.assertFalse(path.endsWith("/bar"));
+        // but if I understood correctly, if it endsWith("/foo/bar") should return true
+        Assert.assertTrue(path.endsWith("/foo/bar"));
     }
 
     @Test(dataProvider = "endsWithData")
