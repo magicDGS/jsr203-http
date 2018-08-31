@@ -9,6 +9,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.util.stream.StreamSupport;
 
 /**
  * @author Daniel Gomez-Sanchez (magicDGS)
@@ -110,6 +111,13 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @Test
+    public void testStartsWithRelativePath() {
+        final Path path = TEST_FS.getPath("/dir/dir/dir");
+        // check endsWith a relative subpath
+        Assert.assertTrue(path.startsWith(path.subpath(2,3)));
+    }
+
+    @Test
     public void testStartsWithDifferentProvider() {
         final Path httpPath = TEST_FS.getPath("/file.txt");
         final Path localPath = new File("/file.txt").toPath();
@@ -180,6 +188,14 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @Test
+    public void testEndsWithRelativePath() {
+        final Path path = TEST_FS.getPath("/first/second/third");
+        // check endsWith the subpath
+        Assert.assertTrue(path.endsWith(path.subpath(1, 3)));
+        Assert.assertTrue(path.endsWith(path.getFileName()));
+    }
+
+    @Test
     public void testEndsWithDifferentProvider() {
         final Path httpPath = TEST_FS.getPath("/file.txt");
         final Path localPath = new File("/file.txt").toPath();
@@ -187,15 +203,93 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @DataProvider
+    public Object[][] fileNames() {
+        return new Object[][] {
+                {"/index.html", "/index.html"},
+                {"/dir/index.html", "/index.html"},
+                {"/dir1/dir2/index.html", "/index.html"},
+                // should also work with redundant paths (as we are already normalizing)
+                {"/dir//index.html", "/index.html"},
+                {"/dir1//dir2//index.txt", "/index.txt"}
+        };
+    }
+
+    @Test(dataProvider = "fileNames")
+    public void testGetFileName(final String pathWithoutAuthority, final String expectedName) {
+        final HttpPath path = TEST_FS.getPath(pathWithoutAuthority);
+        // the best way to check if it is correct is to check the string representation
+        // because the equal method should include the absolute status
+        Assert.assertEquals(path.getFileName().toString(),
+                TEST_FS.getPath(expectedName).toString());
+        // file names are never absolute
+        Assert.assertFalse(path.getFileName().isAbsolute());
+    }
+
+    @Test
+    public void testGetFileNameForRoot() {
+        Assert.assertNull(TEST_FS.getPath("/").getFileName());
+    }
+
+    @DataProvider
+    public static Object[][] parentData() {
+        return new Object[][] {
+                {"/dir/index.html", "/dir"},
+                {"/dir1/dir2/index.html", "/dir1/dir2"},
+                // should also work with redundant paths (as we are already normalizing)
+                {"/dir//index.html", "/dir"},
+                {"/dir1//dir2//index.txt", "/dir1/dir2"}
+        };
+    }
+
+    @Test(dataProvider = "parentData")
+    public void testGetParentAbsolute(final String pathWithoutAuthority,
+            final String expectedParent) {
+        final HttpPath path = TEST_FS.getPath(pathWithoutAuthority);
+        final Path absoluteParent = path.getParent();
+        // check that the paths are the same (even absolute in this case)
+        assertEqualsPath(absoluteParent, TEST_FS.getPath(expectedParent));
+        Assert.assertTrue(absoluteParent.isAbsolute());
+    }
+
+    @Test(dataProvider = "parentData")
+    public void testGetParentRelative(final String pathWithoutAuthority,
+            final String expectedParent) {
+        final HttpPath path = TEST_FS.getPath(pathWithoutAuthority);
+        // get first a relative path by using subpath, and then the parent of it
+        final Path relativeParent = path.subpath(0, path.getNameCount() - 1).getParent();
+        // the best way to check if it is correct is to check the string representation
+        // because the equal method should include the absolute status
+        Assert.assertEquals(path.getParent().toString(),
+                TEST_FS.getPath(expectedParent).toString());
+        Assert.assertFalse(relativeParent.isAbsolute());
+    }
+
+    @Test
+    public void testGetParentIsRoot() {
+        // gets a file sited on the root path
+        final HttpPath path = TEST_FS.getPath("/index.html");
+        // check that the parent and the root are the same
+        assertEqualsPath(path.getParent(), path.getRoot());
+        // and that as root, it is always absolute
+        Assert.assertTrue(path.getParent().isAbsolute());
+    }
+
+    @Test
+    public void testGetParentForRoot() {
+        final HttpPath root = TEST_FS.getPath("/");
+        assertEqualsPath(root.getParent(), root);
+    }
+
+    @DataProvider
     public Object[][] nameCounts() {
-        return new Object[][]{
+        return new Object[][] {
                 // contract says that root returns 0 counts
                 {"http://" + TEST_AUTHORITY, 0},
                 {"http://" + TEST_AUTHORITY + "/", 0},
                 // files (never trailing slash)
                 {"http://" + TEST_AUTHORITY + "/index.html", 1},
                 {"http://" + TEST_AUTHORITY + "/dir1/index.html", 2},
-                {"http://"  + TEST_AUTHORITY + "/dir1/dir2/index.html", 3},
+                {"http://" + TEST_AUTHORITY + "/dir1/dir2/index.html", 3},
                 // directories (with and without trailing slash)
                 {"https://" + TEST_AUTHORITY + "/dir", 1},
                 {"https://" + TEST_AUTHORITY + "/dir/", 1},
@@ -205,17 +299,38 @@ public class HttpPathUnitTest extends BaseTest {
     }
 
     @Test(dataProvider = "nameCounts")
-    public void testGetNameCount(final String uriString, final int count) throws MalformedURLException {
+    public void testGetNameCount(final String uriString, final int count)
+            throws MalformedURLException {
         final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
         Assert.assertEquals(path.getNameCount(), count);
-//        // check that the iterator returns the same number of elements
-//        // TODO: failing until the iterator is implemented ()
-//        Assert.assertEquals(StreamSupport.stream(path.spliterator(), false).count(), count);
-//        // TODO: failing until the iterator is implemented ()
-//        // check that getName(i) does not fail
-//        for (int i = 0; i < path.getNameCount(); i++) {
-//            Assert.assertNotNull(path.getName(i));
-//        }
+        Assert.assertEquals(StreamSupport.stream(path.spliterator(), false).count(), count);
+        // check that getName(i) does not fail
+        for (int i = 0; i < path.getNameCount(); i++) {
+            Assert.assertNotNull(path.getName(i));
+        }
+    }
+
+    @DataProvider
+    public Object[][] invalidIndexSubpath() {
+        final HttpPath testPath = TEST_FS.getPath("/dir1/dir2/dir3/index.html");
+        return new Object[][]{
+                // for the root one, it should not work
+                {testPath.getRoot(), 0, 1},
+                // negative start and end
+                {testPath, -1, 1},
+                {testPath, 1, -1},
+                // lower end than start
+                {testPath, 2, 1},
+                // larger end than counts
+                {testPath, 1, testPath.getNameCount() + 1},
+                // larger start than counts
+                {testPath, testPath.getNameCount() + 1, 2}
+        };
+    }
+
+    @Test(dataProvider = "invalidIndexSubpath", expectedExceptions = IllegalArgumentException.class)
+    public void testInvalidIndexSubpath(final HttpPath path, final int beginIndex, final int endIndex) {
+        path.subpath(beginIndex, endIndex);
     }
 
     @DataProvider
@@ -240,6 +355,43 @@ public class HttpPathUnitTest extends BaseTest {
         Assert.assertNotSame(path.toUri(), uri);
         Assert.assertEquals(path.toUri(), uri);
         Assert.assertEquals(path.toUri().toURL(), uri.toURL());
+    }
+
+    @Test
+    public void testRelativeToUri() {
+        final String fileString = "/file.html";
+        final Path path = TEST_FS.getPath("/dir1/dir2", fileString).getFileName();
+        final URI expected = URI.create("http://" + TEST_AUTHORITY + fileString);
+        Assert.assertEquals(path.toUri(), expected);
+    }
+
+    @Test
+    public void testToAbsolutePath() {
+        final HttpPath path = TEST_FS.getPath("/dir/index.html");
+        Assert.assertSame(path.toAbsolutePath(), path);
+    }
+
+    @Test
+    public void testToAbsolutePathFromRelative() {
+        final HttpPath path = TEST_FS.getPath("/dir/index.html");
+        final HttpPath expectedAbsolute = TEST_FS.getPath("/index.html");
+        assertEqualsPath(path.getFileName().toAbsolutePath(), expectedAbsolute);
+    }
+
+    @Test
+    public void testIterator() {
+        final String[] parts = new String[] {"/dir1", "/dir2", "/index.html"};
+        final HttpPath path = TEST_FS.getPath(String.join(""));
+        int index = 0;
+        for (final Path next : path) {
+            // check as a String (because it is relative)
+            Assert.assertEquals(next.toString(), TEST_FS.getPath(parts[index]).toString(),
+                    "index=" + index);
+            // check that it is relative
+            Assert.assertFalse(next.isAbsolute(), "index=" + index);
+            // check the Path::getName
+            Assert.assertEquals(next, path.getName(index), "index=" + index);
+        }
     }
 
     @DataProvider
@@ -347,7 +499,7 @@ public class HttpPathUnitTest extends BaseTest {
                         "http://" + auth1 + "/" + file1 + "?" + query1 + "#" + ref1,
                         "http://" + auth1 + "/" + file1 + "?" + query1 + "#" + ref2,
                         ref1.compareTo(ref2)
-                },
+                }
         };
     }
 
@@ -401,6 +553,15 @@ public class HttpPathUnitTest extends BaseTest {
         assertNotEqualsPath(httpPath, httpsPath);
     }
 
+    @Test
+    public void testEqualsAbsoluteRelative() {
+        final HttpPath absolute = TEST_FS.getPath("/index.html");
+        final Path relative = absolute.subpath(0, absolute.getNameCount());
+        // sanity check in case something change in the implementation
+        Assert.assertFalse(relative.isAbsolute(), "error in test data");
+        assertNotEqualsPath(absolute, relative);
+    }
+
     @Test(dataProvider = "validUriStrings")
     public void testHashCodeSameObject(final String uriString) {
         final HttpPath path = createPathFromUriStringOnTestProvider(uriString);
@@ -411,6 +572,15 @@ public class HttpPathUnitTest extends BaseTest {
     public void testHashCodeEqualObjects(final String uriString) {
         Assert.assertEquals(createPathFromUriStringOnTestProvider(uriString).hashCode(),
                 createPathFromUriStringOnTestProvider(uriString).hashCode());
+    }
+
+    @Test
+    public void testHashCodeAbsoluteRelativeDiffers() {
+        final HttpPath absolute = TEST_FS.getPath("/index.html");
+        final Path relative = absolute.subpath(0, absolute.getNameCount());
+        // sanity check in case something change in the implementation
+        Assert.assertFalse(relative.isAbsolute(), "error in test data");
+        Assert.assertNotEquals(absolute.hashCode(), relative.hashCode());
     }
 
     @Test(dataProvider = "validUriStrings")

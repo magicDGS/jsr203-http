@@ -12,9 +12,11 @@ import java.nio.file.Path;
 import java.nio.file.WatchEvent;
 import java.nio.file.WatchKey;
 import java.nio.file.WatchService;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.Objects;
+import java.util.stream.IntStream;
 
 /**
  * {@link Path} for HTTP/S.
@@ -59,6 +61,9 @@ final class HttpPath implements Path {
     // reference for the URL (may be null) / fragment for the URI representation
     private final String reference;
 
+    // true if the paht is absolute; false otherwise
+    private final boolean absolute;
+
     /**
      * Internal constructor.
      *
@@ -71,12 +76,16 @@ final class HttpPath implements Path {
      */
     private HttpPath(final HttpFileSystem fs,
             final String query, final String reference,
+            final boolean absolute,
             final byte... normalizedPath) {
         this.fs = fs;
 
         // optional query and reference components (may be null)
         this.query = query;
         this.reference = reference;
+
+        // set the absolute status
+        this.absolute = absolute;
 
         // normalized path bytes (shouldn't be null)
         this.normalizedPath = normalizedPath;
@@ -85,13 +94,15 @@ final class HttpPath implements Path {
     /**
      * Creates a new Path in the provided {@link HttpFileSystem}, with optional query and reference.
      *
-     * @param fs file system representing the base URL (scheme and authority).
-     * @param path path component for the URL (required).
-     * @param query query  component for the URL (optional).
+     * @param fs        file system representing the base URL (scheme and authority).
+     * @param path      path (absolute) component for the URL (required).
+     * @param query     query  component for the URL (optional).
      * @param reference reference component for the URL (optional).
      */
-    HttpPath(final HttpFileSystem fs, final String path, final String query, final String reference) {
-        this(Utils.nonNull(fs, () -> "null fs"), query, reference,
+    HttpPath(final HttpFileSystem fs, final String path, final String query,
+            final String reference) {
+        // always absolute and checking it when converting to byte[]
+        this(Utils.nonNull(fs, () -> "null fs"), query, reference, true,
                 getNormalizedPathBytes(Utils.nonNull(path, () -> "null path"), true));
     }
 
@@ -102,24 +113,45 @@ final class HttpPath implements Path {
 
     @Override
     public boolean isAbsolute() {
-        // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
-        return true;
+        return absolute;
     }
 
     @Override
     public Path getRoot() {
-        // root is a Path with only the byte array
-        return new HttpPath(fs, null, null);
+        // root is a Path with only the byte array (always absolute)
+        return new HttpPath(fs, null, null, true);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @implNote returns always a relative path.
+     */
     @Override
     public Path getFileName() {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        // following the contract, for the getNameCounts() == 0 (root) we return null
+        if (offsets.length == 0) {
+            return null;
+        }
+        // file names are always relative paths
+        return subpath(offsets.length - 1, offsets.length, false);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @implNote returned path keeps the {@link #isAbsolute()} status of the current path.
+     */
     @Override
     public Path getParent() {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        // returns the root if there is no
+        if (offsets.length == 0) {
+            return getRoot();
+        }
+        // parent names are absolute/relative depending on the current status
+        return subpath(0, offsets.length - 1, absolute);
     }
 
     @Override
@@ -128,14 +160,59 @@ final class HttpPath implements Path {
         return offsets.length;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @implNote returns always a relative path.
+     */
     @Override
     public Path getName(final int index) {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        // returns always a relative path
+        return subpath(index, index + 1, false);
     }
 
     @Override
     public Path subpath(final int beginIndex, final int endIndex) {
-        throw new UnsupportedOperationException("Not implemented");
+        initOffsets();
+        // following the contract for invalid indexes
+        if (beginIndex < 0 || beginIndex >= offsets.length ||
+                endIndex <= beginIndex || endIndex > offsets.length) {
+            throw new IllegalArgumentException(String
+                    .format("Invalid indexes for path with %s name(s): [%s, %s]",
+                            getNameCount(), beginIndex, endIndex));
+        }
+        // return the new path (always relative path following the contract)
+        return subpath(beginIndex, endIndex, false);
+    }
+
+    /**
+     * Helper method to implement different subpath routines with different absolute/relative
+     * status.
+     *
+     * <p>The contract of this method is the same as {@link Path#subpath(int, int)}).
+     *
+     * @param beginIndex the index of the first element, inclusive
+     * @param endIndex   the index of the last element, exclusive
+     * @param absolute   {@code true} if the returned path is absolute; {@code false} otherwise.
+     *
+     * @return a new path object that is a subsequence of the nams elements in this {@code
+     * HttpPath}.
+     *
+     * @implNote assumes that the caller already initialized the offsets and that the indexes are
+     * correct.
+     */
+    private HttpPath subpath(final int beginIndex, final int endIndex, final boolean absolute) {
+        // get the coordinates to copy the path array
+        final int begin = offsets[beginIndex];
+        final int end = (endIndex == offsets.length) ? normalizedPath.length : offsets[endIndex];
+
+        // construct the result
+        final byte[] newPath = Arrays.copyOfRange(normalizedPath, begin, end);
+
+        // return the new path (always relative path)
+        // TODO: should the query/reference be propagated?
+        return new HttpPath(this.fs, null, null, absolute, newPath);
     }
 
     @Override
@@ -163,6 +240,7 @@ final class HttpPath implements Path {
      * for the path component.
      *
      * @param other the other path component.
+     *
      * @return {@code true} if {@link #normalizedPath} ends with {@code other}; {@code false}
      * otherwise.
      */
@@ -304,8 +382,8 @@ final class HttpPath implements Path {
         if (isAbsolute()) {
             return this;
         }
-        // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
-        throw new IllegalStateException("Should not appear a relative HTTP/S paths (unsupported)");
+        // just create a new path with a different absolute status
+        return new HttpPath(fs, query, reference, true, normalizedPath);
     }
 
     @Override
@@ -333,7 +411,7 @@ final class HttpPath implements Path {
 
     @Override
     public Iterator<Path> iterator() {
-        throw new UnsupportedOperationException("Not implemented");
+        return IntStream.range(0, getNameCount()).mapToObj(this::getName).iterator();
     }
 
     /**
@@ -392,12 +470,12 @@ final class HttpPath implements Path {
     /**
      * {@inheritDoc}
      *
-     * @implNote it uses the {@link #compareTo(Path)} method.
+     * @implNote it uses the {@link #compareTo(Path)} method and the absolute status.
      */
     @Override
     public boolean equals(final Object other) {
         try {
-            return compareTo((Path) other) == 0;
+            return ((HttpPath) other).absolute == this.absolute && compareTo((Path) other) == 0;
         } catch (ClassCastException e) {
             return false;
         }
@@ -406,13 +484,13 @@ final class HttpPath implements Path {
     /**
      * {@inheritDoc}
      *
-     * @implNote Includes all the components of the path in a case-sensitive way, except the scheme
-     * and the authority.
+     * @implNote Includes the absolute status and  all the components of the path in a
+     * case-sensitive way, except the scheme and the authority.
      */
     @Override
     public int hashCode() {
         // TODO - maybe we should cache (https://github.com/magicDGS/jsr203-http/issues/18)
-        int h = fs.hashCode();
+        int h = 31 * Boolean.hashCode(absolute) + fs.hashCode();
         for (int i = 0; i < normalizedPath.length; i++) {
             h = 31 * h + (normalizedPath[i] & 0xff);
         }
@@ -487,7 +565,6 @@ final class HttpPath implements Path {
      * @return array of bytes, without multiple slashes together.
      */
     private static byte[] getNormalizedPathBytes(final String path, final boolean checkRelative) {
-        // TODO - change when we support relative Paths (https://github.com/magicDGS/jsr203-http/issues/12)
         if (checkRelative && !path.isEmpty() && !path.startsWith(HttpUtils.HTTP_PATH_SEPARATOR_STRING)) {
             throw new InvalidPathException(path, "Relative HTTP/S path are not supported");
         }
