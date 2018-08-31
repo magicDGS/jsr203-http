@@ -8,14 +8,13 @@ buildscript {
 // PLUGINS
 plugins {
     id "java"
-    id 'com.palantir.git-version' version "0.11.0"
+    id 'org.ajoberstar.reckon' version "0.8.0"
 }
 
 // Apply the custom jacoco coverage plugin
 apply from: 'gradle/jacoco.coverage.gradle'
 
 group = 'org.magicdgs'
-version gitVersion()
 description = """HTTP/S FileSystem provider for Java NIO.2"""
 
 // library dependencies
@@ -40,6 +39,12 @@ dependencies {
 // for managing the wrapper task
 wrapper {
     gradleVersion = '4.9'
+}
+
+// versioning using reckon
+reckon {
+    scopeFromProp()
+    stageFromProp('rc', 'final')
 }
 
 tasks.withType(Javadoc) {
@@ -120,3 +125,6 @@ tasks.withType(Jar) {
                    'Implementation-Version': version
     }
 }
+
+// publishing using reckon (in GitHub)
+reckonTagCreate.dependsOn check
