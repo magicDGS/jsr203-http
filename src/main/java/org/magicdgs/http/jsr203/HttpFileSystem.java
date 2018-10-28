@@ -120,7 +120,7 @@ final class HttpFileSystem extends FileSystem {
                 + String.join(getSeparator(), Utils.nonNull(more, () -> "null more"));
 
         if (!path.isEmpty() && !path.startsWith(getSeparator())) {
-            throw new InvalidPathException(path, "Relative paths are not supported", 0);
+            throw new InvalidPathException(path, "Cannot construct a relative http/s path", 0);
         }
 
         try {
