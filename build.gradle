@@ -7,7 +7,9 @@ buildscript {
 
 // PLUGINS
 plugins {
-    id "java"
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
     id 'com.palantir.git-version' version "0.11.0"
 }
 
@@ -15,7 +17,9 @@ plugins {
 apply from: 'gradle/jacoco.coverage.gradle'
 
 group = 'org.magicdgs'
-version gitVersion()
+
+final isRelease = Boolean.getBoolean("release")
+version = (isRelease ? gitVersion() : gitVersion() + "-SNAPSHOT").replaceAll(".dirty", "")
 description = """HTTP/S FileSystem provider for Java NIO.2"""
 
 // library dependencies
@@ -28,18 +32,23 @@ def slf4jVersion = "1.7.25"
 
 dependencies {
     // for logging, we use the SLF4J API
-    compile "org.slf4j:slf4j-api:" + slf4jVersion
+    implementation "org.slf4j:slf4j-api:" + slf4jVersion
 
     // use TestNG for testing
-    testCompile "org.testng:testng:6.11"
-    testCompile "org.mockito:mockito-core:2.8.47"
+    testImplementation "org.testng:testng:6.11"
+    testImplementation "org.mockito:mockito-core:2.8.47"
     // add SLF4J implementation for testing
-    testCompile "org.slf4j:slf4j-simple:" + slf4jVersion
+    testImplementation "org.slf4j:slf4j-simple:" + slf4jVersion
 }
 
 // for managing the wrapper task
 wrapper {
-    gradleVersion = '4.9'
+    gradleVersion = '6.1'
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
 }
 
 tasks.withType(Javadoc) {
@@ -117,6 +126,61 @@ tasks.withType(Jar) {
     // add manifest information
     manifest {
         attributes 'Implementation-Title': rootProject.name,
-                   'Implementation-Version': version
+                   'Implementation-Version': archiveVersion
     }
 }
+
+publishing {
+    publications {
+        library(MavenPublication) {
+            from components.java
+
+            pom {
+                name = 'jsr203-http'
+                packaging = 'jar'
+                description = project.description  
+                url = 'https://github.com/magicDGS/jsr203-http'
+
+                developers {
+                    developer {
+                        id = 'MagicDGS'
+                        name = 'Daniel Gómez-Sánchez'
+                        url = 'https://github.com/magicDGS/'
+                    }
+                }
+
+                scm {
+                    url = 'git@github.com:magicDGS/jsr-203.git'
+                    connection = 'scm:git:git@github.com:magicDGS/jsr-203.git'
+                }
+
+                licenses {
+                    license {
+                        name = 'BSD 3-Clause'
+                        url = 'https://github.com/magicDGS/jsr203-http/blob/master/LICENSE.txt'
+                        distribution = 'repo'
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    credentials {
+                        username = isRelease ? project.findProperty("sonatypeUsername") : project.findProperty("artifactoryUsername")
+                        password = isRelease ? project.findProperty("sonatypePassword") : project.findProperty("artifactoryPassword")
+                    }
+                    def release = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+                    def snapshot = "https://broadinstitute.jfrog.io/broadinstitute/libs-snapshot-local/"
+                    url = isRelease ? release : snapshot
+                }
+            }
+        }
+    }
+}
+
+signing {
+    required { isRelease && gradle.taskGraph.hasTask("publishLibraryPublicationToMavenRepository") }
+    if( required ) {
+        sign publishing.publications.library
+    }
+}
+
